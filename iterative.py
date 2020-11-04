@@ -7,9 +7,9 @@ class IterativeDF():
     fwf_colmap={}
     filt = None
     
-    def __init__(self, fi, delimiter="tab", columns=[], fwf_colmap={}):
+    def __init__(self, fi, delimiter=",", columns=[], fwf_colmap={}):
         """
-        delimiter: determines type of separated file. Options are: tab, fwf
+        delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
         columns: for delimited file types, a list of column names in the order they appear
         fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
         start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
@@ -23,17 +23,18 @@ class IterativeDF():
         
     def col_selector(self, row, col):
         """ Selects a column from a row based on file type """
-        if self.delimiter == "tab":
-            cols = row.split("\t")
-            colindex = self.columns.index(col)
-            
-            return cols[colindex]
+
         
         if self.delimiter == "fwf":
             colrange = self.fwf_colmap[col]
             start = colrange[0]
             end = colrange[1]
             return row[start:end]
+        else:
+            cols = row.split(self.delimiter)
+            colindex = self.columns.index(col)
+            
+            return cols[colindex]
         
     def set_filter(self, col, func):
         """ Sets a row-wise filter to be applied in other methods """
