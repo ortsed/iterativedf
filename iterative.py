@@ -1,3 +1,4 @@
+import csv
 from statistics import median, mean, stdev
 
 class IterativeDF():
@@ -7,24 +8,35 @@ class IterativeDF():
     fwf_colmap={}
     filt = None
     
-    def __init__(self, fi, delimiter=",", columns=[], fwf_colmap={}):
+    def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}):
         """
+        
         delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
         columns: for delimited file types, a list of column names in the order they appear
         fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
         start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
         
         """
-        self.fi = fi
+        self.file = file
         self.delimiter = delimiter
-        self.columns = columns
+        if delimiter == "fwf":
+            self.columns = fwf_colmap.keys()
+        elif len(columns) > 0:
+            self.columns = columns
+        else: 
+            line = next(self.reader())
+            self.columns = line.keys()
+            
         self.fwf_colmap = fwf_colmap
+
+    def reader(self):
+        f = open(self.file, "r")
+        reader = csv.DictReader(f)
+        return reader
         
-        
-    def col_selector(self, row, col):
+    def column(self, row, col):
         """ Selects a column from a row based on file type """
 
-        
         if self.delimiter == "fwf":
             colrange = self.fwf_colmap[col]
             start = colrange[0]
@@ -44,7 +56,7 @@ class IterativeDF():
                 self.filt = None
             else:
                 # get the value from the row and use it as a filter
-                val1 = self.col_selector(row, col)
+                val1 = self.column(row, col)
                 if func(val1):
                     return True
                 else:
@@ -53,12 +65,11 @@ class IterativeDF():
         
     def value_counts(self, col):
         """ Gets count of distinct values for a column """
-        self.f = open(self.fi, "r")
         vals = {}
-        for row in self.f.readlines():
+        for row in self.reader():
             if not self.filt or self.filt(row):
                 
-                val = self.col_selector(row, col)
+                val = self.column(row, col)
                 if val not in vals: vals[val] = 0
                 vals[val] = vals[val] + 1
                 
@@ -77,7 +88,7 @@ class IterativeDF():
         for row in self.f.readlines():
             if not self.filt or self.filt(row):
                 
-                val = self.col_selector(row, col)
+                val = self.column(row, col)
                 try:
                     arr.append(float(val))
                 except:
@@ -94,7 +105,7 @@ class IterativeDF():
         for row in self.f.readlines():
             if not self.filt or self.filt(row):
                 for col in cols:
-                    val = self.col_selector(row, col)
+                    val = self.column(row, col)
                     arrs[col].append(val)
                     
         self.f.close()
@@ -103,13 +114,13 @@ class IterativeDF():
     def mean(self, col):
         """ Simple average by adding each value and divide by total # of rows """
         
-        self.f = open(self.fi, "r")
+        self.f = open(self.file, "r")
         total = 0
         rows = 0
         for row in self.f.readlines():
             if not self.filt or self.filt(row):
                 
-                val = self.col_selector(row, col)
+                val = self.column(row, col)
                 try:
                     total = total + val
                     rows = rows + 1
@@ -122,20 +133,20 @@ class IterativeDF():
     
     def length(self):
         """ Gets length of DF """
-        self.f = open(self.fi, "r")
+        self.f = open(self.file, "r")
         length = sum(1 for line in self.f if not self.filt or self.filt(line))
         self.f.close()
         return length
     
     def describe(self, col):
-        self.f = open(self.fi, "r")
+        self.f = open(self.file, "r")
         arr = []
         total = 0
         rows = 0
         for row in self.f.readlines():
             if not self.filt or self.filt(row):
                 
-                val = self.col_selector(row, col)
+                val = self.column(row, col)
                 try:
                     arr.append(val)
                     total = total + val
