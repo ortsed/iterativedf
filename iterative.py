@@ -1,5 +1,6 @@
 import csv
 from statistics import median, mean, stdev
+import pandas as pd
 
 class IterativeDF():
     fi = ""
@@ -28,6 +29,17 @@ class IterativeDF():
             self.columns = line.keys()
             
         self.fwf_colmap = fwf_colmap
+        
+    def head(self, ct=10):
+        data = []
+        i = 0
+        for row in self.reader():
+            data.append(row)
+            i = i +1
+            if i > ct:
+                break
+        df = pd.DataFrame(data, columns=self.columns)
+        return df 
 
     def reader(self):
         f = open(self.file, "r")
@@ -161,4 +173,3 @@ class IterativeDF():
             "Min": min(arr),
             "Max": max(arr),
         }
-    
