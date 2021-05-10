@@ -2,6 +2,7 @@ import csv
 from statistics import median, mean, stdev
 import pandas as pd
 
+
 class IterativeDF():
     fi = ""
     delimiter = ""
@@ -9,17 +10,20 @@ class IterativeDF():
     fwf_colmap={}
     filt = None
     
-    def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}):
+    def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
         """
         
         delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
         columns: for delimited file types, a list of column names in the order they appear
         fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
         start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
+        encoding: utf-8 vs others
         
         """
         self.file = file
         self.delimiter = delimiter
+        self.encoding = encoding
+        
         if delimiter == "fwf":
             self.columns = fwf_colmap.keys()
         elif len(columns) > 0:
@@ -42,7 +46,7 @@ class IterativeDF():
         return df 
 
     def reader(self):
-        f = open(self.file, "r")
+        f = open(self.file, "r", encoding=self.encoding)
         reader = csv.DictReader(f)
         return reader
         
@@ -55,13 +59,19 @@ class IterativeDF():
             end = colrange[1]
             return row[start:end]
         else:
-            cols = row.split(self.delimiter)
-            colindex = self.columns.index(col)
+            #cols = row.split(self.delimiter)
+            #colindex = self.columns.index(col)
             
-            return cols[colindex]
+            return row[col] #cols[colindex]
         
     def set_filter(self, col, func):
-        """ Sets a row-wise filter to be applied in other methods """
+        """ 
+        Sets a row-wise filter to be applied in other methods 
+        col: the column the filter is being applied to
+        func: a function that accepts a single value and returns a boolean
+        for example - func(val) should return True or False
+        
+        """
         def filt(row):
             # if no column is set, unset the filter
             if not col:
@@ -84,9 +94,7 @@ class IterativeDF():
                 val = self.column(row, col)
                 if val not in vals: vals[val] = 0
                 vals[val] = vals[val] + 1
-                
-        self.f.close()
-        return vals
+        return pd.DataFrame(vals.items(), columns=["value", "counts"])
     
     def counts_pct(self, col):
         """ Value counts as a % of total number of rows """
@@ -173,3 +181,26 @@ class IterativeDF():
             "Min": min(arr),
             "Max": max(arr),
         }
+    
+def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
+    """
+
+    delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
+    columns: for delimited file types, a list of column names in the order they appear
+    fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
+    start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
+
+    """
+    df = IterativeDF(file, delimiter=",", columns=[], fwf_colmap={}, encoding=encoding)
+    df.file = file
+    df.delimiter = delimiter
+    if delimiter == "fwf":
+        df.columns = fwf_colmap.keys()
+    elif len(columns) > 0:
+        df.columns = columns
+    else: 
+        line = next(df.reader())
+        df.columns = line.keys()
+
+    df.fwf_colmap = fwf_colmap
+    return df
