@@ -36,6 +36,11 @@ class IterativeDF():
 
         self.fwf_colmap = fwf_colmap
         
+        self.f = open(self.file, "r")
+        
+    def lines(self):
+        return self.f.readlines()[1:]
+        
     def head(self, ct=10):
         data = []
         i = 0
@@ -61,7 +66,7 @@ class IterativeDF():
             end = colrange[1]
             return row[start:end]
         else:
-            cols = row.split(self.delimiter)
+            cols = row #row.split(self.delimiter)
             
             colindex = self.columns.index(col)
             
@@ -88,42 +93,41 @@ class IterativeDF():
                     return False
         self.filt = filt
         
-    def value_counts(self, col):
+    def value_counts(self, col, not_pandas=False, normalize=False):
         """ Gets count of distinct values for a column """
+        if normalize:
+            return self.value_pcts(col, not_pandas)
+        
         vals = {}
-        for row in self.reader():
+        for row in self.lines():
             if not self.filt or self.filt(row):
+                val = self.column(row, col)
                 
-                val = self.column(row, col)
                 if val not in vals: vals[val] = 0
+                
                 vals[val] = vals[val] + 1
-        return pd.DataFrame(vals.items(), columns=["value", "counts"])
-    
-    def counts_pct(self, col):
-        """ Value counts as a % of total number of rows """
-        counts = self.value_counts(col)
-        return [(k, val/sum(counts.values())) for k, val in counts.items()]
 
-    def median(self, col):
-        """ Creates a median by creating array of all values and then using statistics.median """
-        self.f = open(self.file, "r")
-        arr = []
-        for row in self.f.readlines():
-            if not self.filt or self.filt(row):
-                val = self.column(row, col)
-                try:
-                    arr.append(float(val))
-                except:
-                    pass
-        self.f.close()
-        return median(arr)
+        if not_pandas:
+            return vals
+        else:
+            return pd.DataFrame(vals.items(), columns=[col, "counts"])
     
-    def get_cols(self, cols):
+    def value_pcts(self, col, not_pandas=False):
+        """ Value counts as a % of total number of rows """
+        counts = self.value_counts(col, not_pandas=True)
+        
+        pcts = [(k, val/sum(counts.values())) for k, val in counts.items()]
+
+        if not_pandas:
+            return pcts
+        else:
+            return pd.DataFrame(pcts, columns=[col, "pct"])
+
+    def get_cols(self, cols, not_pandas=False):
         """ 
-        Selects columns from the DF and returns as a dictionary of arrays 
+        Selects columns from the DF and returns as a dictionary of arrays or pandas DataFrame
         cols: column name or array of column names to be selected
         """
-        self.f = open(self.file, "r")
         arrs = {}
         
         if type(cols) == str:
@@ -132,24 +136,36 @@ class IterativeDF():
         for col in cols:
             arrs[col] = []
             
-        for row in self.f.readlines()[1:]:
+        for row in self.lines():
             if not self.filt or self.filt(row):
                 for col in cols:
                     val = self.column(row, col)
                     arrs[col].append(val)
                     
-        self.f.close()
-        df = pd.DataFrame(arrs, columns=cols)
-        
-        return df
+        if not_pandas:
+            return arrs
+        else:
+            return pd.DataFrame(arrs, columns=cols)
+
+    def median(self, col):
+        """ Creates a median by creating array of all values and then using statistics.median """
+        arr = []
+        for row in self.lines():
+            if not self.filt or self.filt(row):
+                val = self.column(row, col)
+                try:
+                    arr.append(float(val))
+                except:
+                    pass
+        return median(arr)
+         
     
     def mean(self, col):
         """ Simple average by adding each value and divide by total # of rows """
-        
-        self.f = open(self.file, "r")
+
         total = 0
         rows = 0
-        for row in self.f.readlines():
+        for row in self.lines():
             if not self.filt or self.filt(row):
                 
                 val = self.column(row, col)
@@ -158,24 +174,21 @@ class IterativeDF():
                     rows = rows + 1
                 except:
                     pass
-        self.f.close()
         
         return total/rows
     
     
     def length(self):
         """ Gets length of DF """
-        self.f = open(self.file, "r")
         length = sum(1 for line in self.f if not self.filt or self.filt(line))
-        self.f.close()
         return length
     
     def describe(self, col):
-        self.f = open(self.file, "r")
+ 
         arr = []
         total = 0
         rows = 0
-        for row in self.f.readlines():
+        for row in self.lines():
             if not self.filt or self.filt(row):
                 
                 val = self.column(row, col)
@@ -185,9 +198,9 @@ class IterativeDF():
                     rows = rows + 1
                 except:
                     pass
-        self.f.close()
+
         return {
-            "Median":  median(arr),
+            "Median":   median(arr),
             "Mean"  :   total/rows ,
             "Std":      stdev(arr),
             "Min":      min(arr),
@@ -207,3 +220,7 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
     return df
 
 
+if __name__ == "__main__":
+    df = read_csv("MUP_OHP_R19_P04_V40_D16_Prov_Svc.csv")
+    #print(df.head())
+    print(df.value_counts("Rndrng_Prvdr_Org_Name"))
