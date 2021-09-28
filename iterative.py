@@ -12,11 +12,13 @@ class IterativeDF():
     
     def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
         """
-        
         delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
+        
         columns: for delimited file types, a list of column names in the order they appear
+        
         fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
         start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
+        
         encoding: utf-8 vs others
         
         """
@@ -30,8 +32,8 @@ class IterativeDF():
             self.columns = columns
         else: 
             line = next(self.reader())
-            self.columns = line.keys()
-            
+            self.columns = list(line.keys())
+
         self.fwf_colmap = fwf_colmap
         
     def head(self, ct=10):
@@ -59,10 +61,11 @@ class IterativeDF():
             end = colrange[1]
             return row[start:end]
         else:
-            #cols = row.split(self.delimiter)
-            #colindex = self.columns.index(col)
+            cols = row.split(self.delimiter)
             
-            return row[col] #cols[colindex]
+            colindex = self.columns.index(col)
+            
+            return cols[colindex] #row[col]
         
     def set_filter(self, col, func):
         """ 
@@ -103,11 +106,10 @@ class IterativeDF():
 
     def median(self, col):
         """ Creates a median by creating array of all values and then using statistics.median """
-        self.f = open(self.fi, "r")
+        self.f = open(self.file, "r")
         arr = []
         for row in self.f.readlines():
             if not self.filt or self.filt(row):
-                
                 val = self.column(row, col)
                 try:
                     arr.append(float(val))
@@ -117,19 +119,29 @@ class IterativeDF():
         return median(arr)
     
     def get_cols(self, cols):
-        """ Selects columns from the DF and returns as a dictionary of arrays """
-        self.f = open(self.fi, "r")
+        """ 
+        Selects columns from the DF and returns as a dictionary of arrays 
+        cols: column name or array of column names to be selected
+        """
+        self.f = open(self.file, "r")
         arrs = {}
+        
+        if type(cols) == str:
+            cols = [cols]
+            
         for col in cols:
             arrs[col] = []
-        for row in self.f.readlines():
+            
+        for row in self.f.readlines()[1:]:
             if not self.filt or self.filt(row):
                 for col in cols:
                     val = self.column(row, col)
                     arrs[col].append(val)
                     
         self.f.close()
-        return arrs
+        df = pd.DataFrame(arrs, columns=cols)
+        
+        return df
     
     def mean(self, col):
         """ Simple average by adding each value and divide by total # of rows """
@@ -175,11 +187,11 @@ class IterativeDF():
                     pass
         self.f.close()
         return {
-            "Median" :median(arr),
-            "Mean": total/rows ,
-            "Std": stdev(arr),
-            "Min": min(arr),
-            "Max": max(arr),
+            "Median":  median(arr),
+            "Mean"  :   total/rows ,
+            "Std":      stdev(arr),
+            "Min":      min(arr),
+            "Max":      max(arr),
         }
     
 def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
@@ -192,15 +204,6 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
 
     """
     df = IterativeDF(file, delimiter=",", columns=[], fwf_colmap={}, encoding=encoding)
-    df.file = file
-    df.delimiter = delimiter
-    if delimiter == "fwf":
-        df.columns = fwf_colmap.keys()
-    elif len(columns) > 0:
-        df.columns = columns
-    else: 
-        line = next(df.reader())
-        df.columns = line.keys()
-
-    df.fwf_colmap = fwf_colmap
     return df
+
+
