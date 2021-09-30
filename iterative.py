@@ -248,8 +248,8 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
     fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
     start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
 
-    """
-    df = IterativeDF(file, delimiter=",", columns=[], fwf_colmap={}, encoding=encoding)
+    """ 
+    df = IterativeDF(file, delimiter=delimiter, columns=columns, fwf_colmap=fwf_colmap, encoding=encoding)
     return df
 
 
