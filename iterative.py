@@ -28,6 +28,7 @@ class IterativeDF():
         self.encoding = encoding
         self.dtypes = dtypes
         
+        
         if delimiter == "fwf":
             self.columns = fwf_colmap.keys()
         elif len(columns) > 0:
@@ -38,10 +39,11 @@ class IterativeDF():
 
         self.fwf_colmap = fwf_colmap
                 
-        class IterativeSeries(IterativeDF):
+        class IterativeSeries():
             def __init__(self2, col, dtype=None):
                 self2.dtype = dtype
                 self2.col = col
+                self2._clean = None
             
             def value_counts(self2, **kwargs):
                 return self.value_counts(self2.col, kwargs) 
@@ -49,20 +51,61 @@ class IterativeDF():
             def astype(self2, dtype):
                 self2.dtype = dtype
                 
+            def set_clean(self2, func):
+                self2._clean = func
+            
+            def clean(self2, x):
+                return self2._clean(x)
+                
             def _astype(self2, x):
-                return getattr(self2.dtype, x)
+                return self2.dtype(x)
+                
+            def head(self2, ct=10):
+                data = []
+                i = 0
+                for row in self.reader():
+                    data.append(row)
+                    i = i +1
+                    if i > ct:
+                        break
+                df = pd.DataFrame(data, columns=[self2.col])
+                return df 
+                
+            def values(self2):
+                data = []
+                for row in self.reader():
+                    val = self.column(row, self2.col)
+                    if val:
+                        data.append(val)
+                return data
+                
+            def std(self2):
+                return stdev(self2.values)
                 
             def median(self2):
-                """ Creates a median by creating array of all values and then using statistics.median """
+                """ 
+                Creates an estimated median by creating array of all values 
+                and then using statistics.median 
+                
+                """
                 arr = []
-                for row in self.lines():
+                med = None
+                meds = []
+                
+                for row in self._lines():
                     if not self.filt or self.filt(row):
                         val = self.column(row, self2.col)
-                        try:
-                            arr.append(float(val))
-                        except:
-                            pass
-                return median(arr)
+                        if val:
+                            try:
+                                arr.append(float(val))
+                            except:
+                                pass
+                            if len(arr) > 1000:
+                                med = median(arr)
+                                arr = []
+                                meds.append(med)
+                               
+                return median(meds)
                  
             
             def mean(self2):
@@ -70,7 +113,7 @@ class IterativeDF():
 
                 total = 0
                 rows = 0
-                for row in self.lines():
+                for row in self._lines():
                     if not self.filt or self.filt(row):
                         
                         val = self.column(row, self2.col)
@@ -87,16 +130,17 @@ class IterativeDF():
                 arr = []
                 total = 0
                 rows = 0
-                for row in self.lines():
+                for row in self._lines():
                     if not self.filt or self.filt(row):
                         
                         val = self.column(row, self2.col)
-                        #try:
-                        arr.append(val)
-                        total = total + float(val)
-                        rows = rows + 1
-                        #except:
-                            #pass
+                        #median += eta * sgn(sample - median)
+                        #sgn = signum
+                        if val:                 
+                            arr.append(val)
+                            total = total + val
+                            rows = rows + 1
+
 
                 return {
                     "Median":   median(arr),
@@ -104,6 +148,9 @@ class IterativeDF():
                     "Std":      stdev(arr),
                     "Min":      min(arr),
                     "Max":      max(arr),
+                    "rows": rows,
+                    "total": total
+                    
                 }
                 
 
@@ -115,7 +162,7 @@ class IterativeDF():
                     return self2.value_pcts(self2.col, not_pandas)
                 
                 vals = {}
-                for row in self.lines():
+                for row in self._lines():
                     if not self.filt or self.filt(row):
                         val = self.column(row, self2.col)
                         
@@ -142,10 +189,10 @@ class IterativeDF():
         for col in self.columns:
             setattr(self, col, IterativeSeries(col))
         
-        self.f = open(self.file, "r")
+        self.f = self.reader()
         
-    def lines(self):
-        return self.f.readlines()[1:]
+    def _lines(self):
+        return self.f
         
         
     def head(self, ct=10):
@@ -174,17 +221,13 @@ class IterativeDF():
             end = colrange[1]
             return row[start:end]
         else:
-            cols = row #row.split(self.delimiter)
+            val = row[col]
             
-            colindex = self.columns.index(col)
-            
-            val = cols[colindex]
-            
-            #if self[col].clean():
-            #    val = self.clean(val)
-            
-            if self[col].dtype:
-                val = self[col]._astype(val)
+            if getattr(self, col)._clean:
+                val = getattr(self, col).clean(val)
+            if val:
+                if getattr(self, col).dtype:
+                    val = getattr(self, col)._astype(val)
                 
             return val #row[col]
         
@@ -223,7 +266,7 @@ class IterativeDF():
         for col in cols:
             arrs[col] = []
             
-        for row in self.lines():
+        for row in self._lines():
             if not self.filt or self.filt(row):
                 for col in cols:
                     val = self.column(row, col)
@@ -236,10 +279,15 @@ class IterativeDF():
     
     def shape(self):
         """ Gets shape of DF with filter"""
-        length = sum(1 for line in self.f if not self.filt or self.filt(line))
-        return (length, len(self.columns)
- 
-    
+        length = self.length()
+        return (length, len(self.columns))
+        
+    def length(self):
+        """ Gets shape of DF with filter"""
+        return sum(1 for line in self.f if not self.filt or self.filt(line))
+
+
+
 def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
     """
 
@@ -253,10 +301,17 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
     return df
 
 
+
+
 if __name__ == "__main__":
-    df = read_csv("MUP_OHP_R19_P04_V40_D16_Prov_Svc.csv")
+    df = read_csv("bulk.csv")
     #print(df.head())
     
-    df.Rndrng_Prvdr_Org_Name.astype(float)
+    #df.Avg_Tot_Sbmtd_Chrgs.astype(float)
     
-    print(df.Rndrng_Prvdr_Org_Name.value_counts())
+    #df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
+    #print(df.columns)
+    print(df.Avg_Tot_Sbmtd_Chrgs.median())
+    
+    #df2 = pd.read_csv("MUP_OHP_R19_P04_V40_D16_Prov_Svc.csv")
+    #print(df2.Avg_Tot_Sbmtd_Chrgs.mean(), df2.Avg_Tot_Sbmtd_Chrgs.median(), df2.Avg_Tot_Sbmtd_Chrgs.std())
