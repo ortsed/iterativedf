@@ -97,7 +97,7 @@ class IterativeDF():
                         val = self.column(row, self2.col)
                         if val:
                             try:
-                                arr.append(float(val))
+                                arr.append(val)
                             except:
                                 pass
                             if len(arr) > 1000:
@@ -128,28 +128,44 @@ class IterativeDF():
                
             def describe(self2):   
                 arr = []
-                total = 0
+                tot = 0
                 rows = 0
+                meds = []
+                mn = None
+                mx = None
+                
                 for row in self._lines():
                     if not self.filt or self.filt(row):
-                        
                         val = self.column(row, self2.col)
-                        #median += eta * sgn(sample - median)
-                        #sgn = signum
-                        if val:                 
+                        if val:
+                            tot += val
+                            
+                            rows += 1
                             arr.append(val)
-                            total = total + val
-                            rows = rows + 1
+                            
+                            if not mn:
+                                mn = mx = val
+                            
+                            if val > mx:
+                                mx = val
+                            elif val < mn:
+                                mn = val
+                            
+                            if len(arr) > 1000:
+                                med = median(arr)
+                                arr = []
+                                meds.append(med)
+
 
 
                 return {
-                    "Median":   median(arr),
-                    "Mean"  :   total/rows ,
-                    "Std":      stdev(arr),
-                    "Min":      min(arr),
-                    "Max":      max(arr),
+                    "Median":   median(meds),
+                    "Mean"  :   tot/rows,
+                    #"Std":      stdev(arr),
+                    "Min":      mn,
+                    "Max":      mx,
                     "rows": rows,
-                    "total": total
+                    #"total": tot
                     
                 }
                 
@@ -302,16 +318,23 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
 
 
 
+import time
 
 if __name__ == "__main__":
+    start = time.time()
     df = read_csv("bulk.csv")
     #print(df.head())
     
-    #df.Avg_Tot_Sbmtd_Chrgs.astype(float)
+    df.Avg_Tot_Sbmtd_Chrgs.astype(float)
     
-    #df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
+    df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
     #print(df.columns)
-    print(df.Avg_Tot_Sbmtd_Chrgs.median())
+    print(df.Avg_Tot_Sbmtd_Chrgs.describe())
+    end = time.time()
+    print(end - start)
     
-    #df2 = pd.read_csv("MUP_OHP_R19_P04_V40_D16_Prov_Svc.csv")
-    #print(df2.Avg_Tot_Sbmtd_Chrgs.mean(), df2.Avg_Tot_Sbmtd_Chrgs.median(), df2.Avg_Tot_Sbmtd_Chrgs.std())
+    start = time.time()
+    df2 = pd.read_csv("bulk.csv")
+    print(df2.Avg_Tot_Sbmtd_Chrgs.describe())
+    end = time.time()
+    print(end - start)
