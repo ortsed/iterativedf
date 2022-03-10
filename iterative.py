@@ -1,7 +1,7 @@
 import csv
 from statistics import median, mean, stdev
 import pandas as pd
-
+import os
 
 class IterativeDF():
     fi = ""
@@ -11,7 +11,7 @@ class IterativeDF():
     filt = None
    
     
-    def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, dtypes={}):
+    def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, dtypes={}, nrows=None, skiprows=0):
         """
         delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
         
@@ -27,6 +27,8 @@ class IterativeDF():
         self.delimiter = delimiter
         self.encoding = encoding
         self.dtypes = dtypes
+        self.nrows = nrows
+        self.skiprows = skiprows
         
         
         if delimiter == "fwf":
@@ -208,7 +210,7 @@ class IterativeDF():
         self.f = self.reader()
         
     def _lines(self):
-        return self.f
+        return self.f[self.skiprows:self.nrows]
         
         
     def head(self, ct=10):
@@ -216,7 +218,7 @@ class IterativeDF():
         i = 0
         for row in self.reader():
             data.append(row)
-            i = i +1
+            i = i + 1
             if i > ct:
                 break
         df = pd.DataFrame(data, columns=self.columns)
@@ -304,7 +306,7 @@ class IterativeDF():
 
 
 
-def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
+def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, nrows=None, skiprows=0):
     """
 
     delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
@@ -313,7 +315,7 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None):
     start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
 
     """ 
-    df = IterativeDF(file, delimiter=delimiter, columns=columns, fwf_colmap=fwf_colmap, encoding=encoding)
+    df = IterativeDF(file, delimiter=delimiter, columns=columns, fwf_colmap=fwf_colmap, encoding=encoding, nrows=nrows, skiprows=skiprows)
     return df
 
 
@@ -322,19 +324,23 @@ import time
 
 if __name__ == "__main__":
     start = time.time()
-    df = read_csv("bulk.csv")
+    df = read_csv("bulk.csv", nrows=1000)
+    
+    breakpoint()
+    
+    
     #print(df.head())
     
-    df.Avg_Tot_Sbmtd_Chrgs.astype(float)
+    #df.Avg_Tot_Sbmtd_Chrgs.astype(float)
     
-    df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
+    #df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
     #print(df.columns)
-    print(df.Avg_Tot_Sbmtd_Chrgs.describe())
-    end = time.time()
-    print(end - start)
+    #print(df.Avg_Tot_Sbmtd_Chrgs.describe())
+    #end = time.time()
+    #print(end - start)
     
-    start = time.time()
-    df2 = pd.read_csv("bulk.csv")
-    print(df2.Avg_Tot_Sbmtd_Chrgs.describe())
-    end = time.time()
-    print(end - start)
+    #start = time.time()
+    #df2 = pd.read_csv("bulk.csv")
+    #print(df2.Avg_Tot_Sbmtd_Chrgs.describe())
+    #end = time.time()
+    #print(end - start)
