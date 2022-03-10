@@ -1,5 +1,5 @@
 # iterativedf
-Pandas-like data tool for analyzing data iteratively to avoid memory issues.
+Out-of-Core data analysis tool to handle large data sets on limited memory.
 
 For large data being run on machines that have limited memory/CPU like Vaex. Loads data in row by row but doesn't hold complete dataset in memory all at once.
 
