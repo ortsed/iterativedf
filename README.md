@@ -8,6 +8,7 @@ Usage:
 from iterativedf import IterativeDF
 
 df = IterativeDF("filepath.csv")
+
 df.head()
 
 df.describe()
