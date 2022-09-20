@@ -210,7 +210,7 @@ class IterativeDF():
         self.f = self.reader()
         
     def _lines(self):
-        return self.f[self.skiprows:self.nrows]
+        return self.f #[self.skiprows:self.nrows]
         
         
     def head(self, ct=10):
@@ -226,7 +226,7 @@ class IterativeDF():
 
     def reader(self):
         f = open(self.file, "r", encoding=self.encoding)
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, delimiter=self.delimiter)
         return reader
         
         
