@@ -10,4 +10,4 @@ df = idf.read_csv("filepath.csv")
 
 df.head()
 
-df.describe()
+df.length()
