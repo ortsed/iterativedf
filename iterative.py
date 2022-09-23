@@ -76,12 +76,15 @@ class IterativeDF():
 				
 			def values(self2):
 				""" Returns values of series as array.  Not optimized for large data """
-				data = []
-				for row in self.reader():
-					val = self.column(row, self2.col)
-					if val:
-						data.append(val)
-				return data
+				
+				def _values(row, val):
+					if not val:
+						val = []
+					val.append(self.column(row, self2.col))
+					return val
+					
+				return self.apply(_values)
+				
 				
 			def std(self2):
 				""" Standard deviation of a series.  Not optimized for large data """
@@ -97,7 +100,7 @@ class IterativeDF():
 				med = None
 				meds = []
 				
-				for row in self._lines():
+				for row in self.reader():
 					if not self.filt or self.filt(row):
 						val = self.column(row, self2.col)
 						if val:
@@ -118,7 +121,7 @@ class IterativeDF():
 
 				total = 0
 				rows = 0
-				for row in self._lines():
+				for row in self.reader():
 					if not self.filt or self.filt(row):
 						
 						val = self.column(row, self2.col)
@@ -133,49 +136,55 @@ class IterativeDF():
 			   
 			def describe(self2):   
 				""" Basic stats of Series """
-			
-				arr = []
-				tot = 0
-				rows = 0
-				meds = []
-				mn = None
-				mx = None
 				
-				for row in self._lines():
-					if not self.filt or self.filt(row):
-						val = self.column(row, self2.col)
-						if val:
-							tot += val
+				def _describe(row, vals, col):
+				
+					if not vals:
+						arr = []
+						tot = 0
+						rows = 0
+						meds = []
+						mn = None
+						mx = None
+					else:
+						arr, tot, rows, meds, mn, mx = vals
+				
+					val = self.column(row, col)
+					
+					if val:
+						tot += val
+						
+						rows += 1
+						arr.append(val)
+						
+						if not mn:
+							mn = mx = val
+						
+						if val > mx:
+							mx = val
+						elif val < mn:
+							mn = val
+						
+						if len(arr) > 1000:
+							med = median(arr)
+							arr = []
+							meds.append(med)
 							
-							rows += 1
-							arr.append(val)
-							
-							if not mn:
-								mn = mx = val
-							
-							if val > mx:
-								mx = val
-							elif val < mn:
-								mn = val
-							
-							if len(arr) > 1000:
-								med = median(arr)
-								arr = []
-								meds.append(med)
-
-
+					return [arr, tot, rows, meds, mn, mx]
+				
+				arr, tot, rows, meds, mn, mx  = self.apply(_describe, self2.col)
 
 				return {
 					"Median":   median(meds),
 					"Mean"  :   tot/rows,
-					#"Std":	  stdev(arr),
-					"Min":	  mn,
-					"Max":	  mx,
+					#"Std":	  	stdev(arr),
+					"Min":	  	mn,
+					"Max":	 	mx,
 					"Rows": 	rows,
 					#"total": tot
-					
-				}
 				
+				}
+					
 			
 					
 			def value_counts(self2, not_pandas=False, normalize=False):
@@ -187,9 +196,8 @@ class IterativeDF():
 				return self.groupby(self2.col, self2.col, not_pandas=not_pandas, normalize=True)
 
 		for col in self.columns:
-			setattr(self, col, IterativeSeries(col))
-		
-		self.f = self.reader()
+			if col:
+				setattr(self, col, IterativeSeries(col))
 		
 	def groupby(self, col1, col2, method, not_pandas=False, normalize=False):
 		""" 
@@ -216,15 +224,17 @@ class IterativeDF():
 			cts[val1] = cts[val1] + 1
 			
 			if method != "count": 
+				
 				val2 = self.column(row, col2)
-				vals[val1] = 0
-		
-				if val2:
+				if val2:									
+					if val1 not in vals: 
+						vals[val1] = 0
+				
 					vals[val1] = vals[val1] + val2 
 			
-			
 			return [cts, vals]
-			
+		
+		
 		cts, vals = self.apply(_groupby, col1, col2, method, not_pandas, normalize)
 				
 		if method == "count":
@@ -245,7 +255,7 @@ class IterativeDF():
 		if not_pandas:
 			return output
 		else:
-			return pd.DataFrame(output.items(), columns=[col1, "counts"])
+			return pd.DataFrame(output.items(), columns=[col1, method])
 		
 	def apply(self, func, *args, nrows=None):
 		""" Method to apply a function across all data through a loop """
@@ -258,7 +268,8 @@ class IterativeDF():
 
 		
 		i = 0
-		for row in self._lines():
+		
+		for row in self.reader():
 			if not self.filt or self.filt(row):
 				
 				if self.skiprows and i <= self.skiprows:
@@ -278,11 +289,8 @@ class IterativeDF():
 					vals = func(row, vals, *args)
 					 
 				i = i + 1
-				
+		
 		return vals
-	
-	def _lines(self):
-		return self.f #[self.skiprows:self.nrows]
 		
 		
 	def head(self, ct=10):
@@ -380,7 +388,7 @@ class IterativeDF():
 		
 	def length(self):
 		""" Gets shape of DF with filter"""
-		return sum(1 for line in self.f if not self.filt or self.filt(line))
+		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 
 
 ### Common Utility functions
@@ -405,16 +413,22 @@ import time
 
 if __name__ == "__main__":
 	start = time.time()
-	df = read_csv("sample.txt", nrows=10000, delimiter="|")
+	df = read_csv("sample2.txt", delimiter=",")
 	
 	df.Size.astype("int")
 	
+	print(df.Size.describe())
+	
 	#breakpoint()
 	
+	#df.set_filter("Symbol", lambda x: x == "ONTX")
 	
-	print(df.head())
+	#breakpoint()
+	#print(df.head())
 	
-	print(df.groupby("Symbol", "Size", "sum"))
+	
+	
+	print(df.groupby("Symbol", "Size", "sum").sort_values("sum"))
 	
 	#df.Avg_Tot_Sbmtd_Chrgs.astype(float)
 	
