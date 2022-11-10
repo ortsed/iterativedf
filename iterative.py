@@ -3,6 +3,9 @@ from statistics import median, mean, stdev
 import pandas as pd
 import os
 
+set_option = pd.set_option
+
+
 class IterativeDF():
 	fi = ""
 	delimiter = ""
@@ -189,11 +192,11 @@ class IterativeDF():
 					
 			def value_counts(self2, not_pandas=False, normalize=False):
 				""" Gets count of distinct values for a column """
-				return self.groupby(self2.col, self2.col, not_pandas=not_pandas, normalize=normalize)
+				return self.groupby(self2.col, self2.col, "count", not_pandas=not_pandas, normalize=normalize)
 			
 			def value_pcts(self2, not_pandas=False):
 				""" Value counts as a % of total number of rows """
-				return self.groupby(self2.col, self2.col, not_pandas=not_pandas, normalize=True)
+				return self.groupby(self2.col, self2.col, "count", not_pandas=not_pandas, normalize=True)
 
 		for col in self.columns:
 			if col:
@@ -239,7 +242,7 @@ class IterativeDF():
 				
 		if method == "count":
 			if normalize:
-				cts = [(k, val/sum(cts.values())) for k, val in cts.items()]
+				cts = {k: val/sum(cts.values()) for k, val in cts.items()}
 		
 			output = cts
 		elif method == "mean":
@@ -268,7 +271,6 @@ class IterativeDF():
 
 		
 		i = 0
-		
 		for row in self.reader():
 			if not self.filt or self.filt(row):
 				
@@ -276,7 +278,7 @@ class IterativeDF():
 					# do nothing if skipping first X rows
 					pass
 				
-				elif self.nrows and i >= nrows + self.skiprows:
+				elif nrows and i >= nrows + self.skiprows:
 				# Break if past the total number of rows
 					break
 				
@@ -289,7 +291,6 @@ class IterativeDF():
 					vals = func(row, vals, *args)
 					 
 				i = i + 1
-		
 		return vals
 		
 		
@@ -443,3 +444,5 @@ if __name__ == "__main__":
 	#print(df2.Avg_Tot_Sbmtd_Chrgs.describe())
 	#end = time.time()
 	#print(end - start)
+
+
