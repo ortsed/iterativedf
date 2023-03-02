@@ -87,13 +87,16 @@ class IterativeDF():
 				
 				
 			def std(self2):
-				""" Standard deviation of a series.  Not optimized for large data """
+				""" Standard deviation of a series.  
+				todo: Needs to be turned into an iterative method
+				Not optimized for large data 
+				"""
 				return stdev(self2.values)
 				
 			def median(self2):
 				""" 
-				Creates an estimated median by creating array of all values 
-				and then using statistics.median 
+				Creates an estimated median by calculating median of subarrays
+				and then calculating median of array of medians 
 				
 				"""
 				arr = []
@@ -207,6 +210,8 @@ class IterativeDF():
 		not_pandas: flag to toggle pandas object output
 		normalize: flag to toggle counts as a percentage of total counts
 		
+		todo: group by multiple columns
+		
 		"""
 
 		def _groupby(row, cts_vals, col1, col2, method, not_pandas, normalize):	
@@ -258,7 +263,7 @@ class IterativeDF():
 			return pd.DataFrame(output.items(), columns=[col1, method])
 		
 	def apply(self, func, *args, nrows=None):
-		""" Method to apply a function across all data through a loop """
+		""" Method to apply a function across all data in the dataframe """
 		
 		vals = None
 			
@@ -276,7 +281,7 @@ class IterativeDF():
 					# do nothing if skipping first X rows
 					pass
 				
-				elif self.nrows and i >= nrows + self.skiprows:
+				elif nrows and i >= nrows + self.skiprows:
 				# Break if past the total number of rows
 					break
 				
@@ -294,6 +299,7 @@ class IterativeDF():
 		
 		
 	def head(self, ct=10):
+		""" Return top n number of rows """
 		
 		def _head(row, vars):
 			if vars == None:
@@ -309,7 +315,7 @@ class IterativeDF():
 		return df 
 
 	def reader(self):
-		""" Method for opening and reading the file line by line using DictReader """
+		""" Method for opening and reading the file line by line using csv.DictReader """
 		
 		f = open(self.file, "r", encoding=self.encoding)
 		reader = csv.DictReader(f, delimiter=self.delimiter)
@@ -317,7 +323,7 @@ class IterativeDF():
 		
 		
 	def column(self, row, col):
-		""" Selects a column from a row based on file type """
+		""" Selects a column from a row """
 
 		if self.delimiter == "fwf":
 			colrange = self.fwf_colmap[col]
@@ -358,7 +364,7 @@ class IterativeDF():
 
 	def get_cols(self, cols, not_pandas=False):
 		""" 
-		Selects columns from the DF and returns as a dictionary of arrays or pandas DataFrame
+		Selects columns from the dataframe and returns as a dictionary of arrays or pandas DataFrame
 		cols: column name or array of column names to be selected
 		"""
 		arrs = {}
@@ -382,12 +388,12 @@ class IterativeDF():
 			return pd.DataFrame(arrs, columns=cols)
 	
 	def shape(self):
-		""" Gets shape of DF with filter"""
+		""" Gets shape of dataframe with filter"""
 		length = self.length()
 		return (length, len(self.columns))
 		
 	def length(self):
-		""" Gets shape of DF with filter"""
+		""" Gets shape of dataframe with filter"""
 		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 
 
