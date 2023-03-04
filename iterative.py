@@ -6,12 +6,56 @@ import os
 set_option = pd.set_option
 
 
+"""
+Class that defines a dataframe similar to Pandas
+Data is not read into memory, but loops through row by row
+
+
+# Read in File as CSV
+df = idf.read_csv("sample2.txt", delimiter=",")
+
+# First 10 rows
+df.head() 
+
+# List of columns in data
+df.columns
+
+# Group and aggregate data based on column
+df.groupby("Symbol", "Size", "sum").sort_values("sum")
+
+# Limit data output to subset
+df.set_filter("Symbol", lambda x: x == "ONTX")
+	
+
+# Series methods
+df.Size.astype("int")
+
+# Get basic stats of a column
+df.Size.describe()
+
+# First ten rows of a column
+df.__dict__['Date Of Incident'].head()
+
+# Create a new column based on a calculation of another column
+df.__dict__['Date Of Incident'].cp("dt", lambda x: x[0:4]) 
+
+df.
+
+
+
+"""
+
 class IterativeDF():
+
+
+
+
 	fi = ""
 	delimiter = ""
 	columns = []
 	fwf_colmap = {}
 	filt = None
+	func = None
    
 	
 	def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, dtypes={}, nrows=None, skiprows=0):
@@ -33,6 +77,9 @@ class IterativeDF():
 		self.nrows = nrows
 		self.skiprows = skiprows
 		
+		def __getitem__(self, key):
+			return getattr(self, key)
+		
 		
 		if delimiter == "fwf":
 			self.columns = fwf_colmap.keys()
@@ -41,52 +88,64 @@ class IterativeDF():
 		else: 
 			line = next(self.reader())
 			self.columns = list(line.keys())
+			
+		
+		
 
 		self.fwf_colmap = fwf_colmap
 
 		class IterativeSeries():
 			""" Define the series class for dataframe columns """
 
-			def __init__(self2, col, dtype=None):
+			def __init__(self2, column, handle=None, dtype=None):
 				self2.dtype = dtype
-				self2.col = col
-				self2._clean = None
+				
+				# Name of the column in the original data
+				self2.column = column 
+				
+				# What the column is referred to in the idf
+				# Changes when there is a calculated field
+				if handle:
+					self2.handle = handle
+				else:
+					self2.handle = column
+				
+				self2.func = None
 
 			def astype(self2, dtype):
 				self2.dtype = dtype
-				self2.set_clean(eval(self2.dtype))
+				self2.func = lambda x: dtype(x)
 				
-			def set_clean(self2, func):
-				self2._clean = func
-			
-			def clean(self2, x):
-				if x:
-					return self2._clean(x)
-				else:
-					return x
+					
+			def cp(self2, col_name, func=None):
+				self.__dict__[col_name] = IterativeSeries(self2.column, handle=col_name)
+				
+				if func:
+					self.__dict__[col_name].func = func
 								
-			def head(self2, ct=10):
-				""" Returns first ct number of rows of the series """
-				data = []
-				i = 0
-				for row in self.reader():
-					data.append(row)
-					i = i + 1
-					if i > ct:
-						break
-				df = pd.DataFrame(data, columns=[self2.col])
-				return df 
+			def head(self2, nrows=10):
+				""" Return top n number of rows """
+				return self2.values(nrows=nrows)
 				
-			def values(self2):
-				""" Returns values of series as array.  Not optimized for large data """
+			def values(self2, nrows=10):
+				""" Returns values of series as array.  """
 				
 				def _values(row, val):
 					if not val:
 						val = []
-					val.append(self.column(row, self2.col))
-					return val
+					data = self.column(row, self2.column)
 					
-				return self.apply(_values)
+					
+					if self2.func:
+						data = self2.func(data)
+					
+					val.append(data)
+					
+					return val
+				
+				data = self.apply(_values, nrows=nrows)
+				
+				return pd.DataFrame(data, columns=[self2.handle])
 				
 				
 			def std(self2):
@@ -96,7 +155,7 @@ class IterativeDF():
 				"""
 				return stdev(self2.values)
 				
-			def median(self2):
+			def median(self2, subgroup_size=1000):
 				""" 
 				Creates an estimated median by calculating median of subarrays
 				and then calculating median of array of medians 
@@ -108,13 +167,13 @@ class IterativeDF():
 				
 				for row in self.reader():
 					if not self.filt or self.filt(row):
-						val = self.column(row, self2.col)
+						val = self.column(row, self2.column)
 						if val:
 							try:
 								arr.append(val)
 							except:
 								pass
-							if len(arr) > 1000:
+							if len(arr) > subgroup_size:
 								med = median(arr)
 								arr = []
 								meds.append(med)
@@ -130,7 +189,7 @@ class IterativeDF():
 				for row in self.reader():
 					if not self.filt or self.filt(row):
 						
-						val = self.column(row, self2.col)
+						val = self.column(row, self2.column)
 						try:
 							total = total + val
 							rows = rows + 1
@@ -143,7 +202,7 @@ class IterativeDF():
 			def describe(self2):   
 				""" Basic stats of Series """
 				
-				def _describe(row, vals, col):
+				def _describe(row, vals, column):
 				
 					if not vals:
 						arr = []
@@ -155,7 +214,7 @@ class IterativeDF():
 					else:
 						arr, tot, rows, meds, mn, mx = vals
 				
-					val = self.column(row, col)
+					val = self.column(row, column)
 					
 					if val:
 						tot += val
@@ -178,7 +237,7 @@ class IterativeDF():
 							
 					return [arr, tot, rows, meds, mn, mx]
 				
-				arr, tot, rows, meds, mn, mx  = self.apply(_describe, self2.col)
+				arr, tot, rows, meds, mn, mx  = self.apply(_describe, self2.column)
 
 				return {
 					"Median":   median(meds),
@@ -195,17 +254,19 @@ class IterativeDF():
 					
 			def value_counts(self2, not_pandas=False, normalize=False):
 				""" Gets count of distinct values for a column """
-				return self.groupby(self2.col, self2.col, "count", not_pandas=not_pandas, normalize=normalize)
+				return self.groupby(self2.column, self2.column, "count", not_pandas=not_pandas, normalize=normalize)
 			
 			def value_pcts(self2, not_pandas=False):
 				""" Value counts as a % of total number of rows """
-				return self.groupby(self2.col, self2.col, "count", not_pandas=not_pandas, normalize=True)
+				return self.groupby(self2.column, self2.column, "count", not_pandas=not_pandas, normalize=True)
 
-		for col in self.columns:
-			if col:
-				setattr(self, col, IterativeSeries(col))
-		
-	def groupby(self, col1, col2, method, not_pandas=False, normalize=False):
+		# sets a Series attribute for each column
+		for column in self.columns:
+			if column:
+				setattr(self, column, IterativeSeries(column))
+				self.__dict__[column] = IterativeSeries(column)
+				
+	def groupby(self, column1, column2, method, not_pandas=False, normalize=False):
 		""" 
 		Group by a column 
 		col1: the column being grouped over
@@ -217,14 +278,14 @@ class IterativeDF():
 		
 		"""
 
-		def _groupby(row, cts_vals, col1, col2, method, not_pandas, normalize):	
+		def _groupby(row, cts_vals, column1, column2, method, not_pandas, normalize):	
 			
 			if cts_vals == None:
 				cts_vals = [{}, {}]
 				
 			cts, vals = cts_vals			
 
-			val1 = self.column(row, col1)
+			val1 = self.column(row, column1)
 
 			if val1 not in cts: 
 				cts[val1] = 0
@@ -233,7 +294,7 @@ class IterativeDF():
 			
 			if method != "count": 
 				
-				val2 = self.column(row, col2)
+				val2 = self.column(row, column2)
 				if val2:									
 					if val1 not in vals: 
 						vals[val1] = 0
@@ -243,7 +304,7 @@ class IterativeDF():
 			return [cts, vals]
 		
 		
-		cts, vals = self.apply(_groupby, col1, col2, method, not_pandas, normalize)
+		cts, vals = self.apply(_groupby, column1, column2, method, not_pandas, normalize)
 				
 		if method == "count":
 			if normalize:
@@ -263,7 +324,7 @@ class IterativeDF():
 		if not_pandas:
 			return output
 		else:
-			return pd.DataFrame(output.items(), columns=[col1, method])
+			return pd.DataFrame(output.items(), columns=[column1, method])
 		
 	def apply(self, func, *args, nrows=None):
 		""" Method to apply a function across all data in the dataframe """
@@ -299,7 +360,7 @@ class IterativeDF():
 		return vals
 		
 		
-	def head(self, ct=10):
+	def head(self, nrows=10):
 		""" Return top n number of rows """
 		
 		def _head(row, vars):
@@ -308,7 +369,7 @@ class IterativeDF():
 				
 			vals, i = vars
 			vals.append(row)
-			return [vals, ct]
+			return [vals, nrows]
 		
 		data, i = self.apply(_head, nrows=ct)
 
@@ -323,25 +384,25 @@ class IterativeDF():
 		return reader
 		
 		
-	def column(self, row, col):
+	def column(self, row, column):
 		""" Selects a column from a row """
 
 		if self.delimiter == "fwf":
-			colrange = self.fwf_colmap[col]
+			colrange = self.fwf_colmap[column]
 			start = colrange[0]
 			end = colrange[1]
 			return row[start:end]
 		else:
-			val = row[col]
+			val = row[column]
 			
-			if getattr(self, col)._clean != None:
+			if getattr(self, column).func != None:
 				
-				val = getattr(self, col).clean(val)
+				val = getattr(self, column).func(val)
 				
 				
 			return val #row[col]
 		
-	def set_filter(self, col, func):
+	def set_filter(self, column, func):
 		""" 
 		Sets a row-wise filter to be applied in other methods 
 		col: the column the filter is being applied to
@@ -351,17 +412,16 @@ class IterativeDF():
 		"""
 		def filt(row):
 			# if no column is set, unset the filter
-			if not col:
+			if not column:
 				self.filt = None
 			else:
 				# get the value from the row and use it as a filter
-				val1 = self.column(row, col)
+				val1 = self.column(row, column)
 				if func(val1):
 					return True
 				else:
 					return False
 		self.filt = filt
-
 
 	def get_cols(self, cols, not_pandas=False):
 		""" 
@@ -375,11 +435,11 @@ class IterativeDF():
 			cols = [cols]
 			
 		# Create an empty array for each column
-		for col in cols:
-			arrs[col] = []
+		for column in cols:
+			arrs[column] = []
 			
 		def _get_cols(row, arr, cols):
-			return arr.append([self.column(row, col) for col in cols])
+			return arr.append([self.column(row, column) for column in cols])
 			
 		arrs = self.apply(_get_cols, cols)			
 					
@@ -414,41 +474,6 @@ def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, nrow
 
 
 
-### Unit tests
 
-import time
-
-if __name__ == "__main__":
-	start = time.time()
-	df = read_csv("sample2.txt", delimiter=",")
-	
-	df.Size.astype("int")
-	
-	print(df.Size.describe())
-	
-	#breakpoint()
-	
-	#df.set_filter("Symbol", lambda x: x == "ONTX")
-	
-	#breakpoint()
-	#print(df.head())
-	
-	
-	
-	print(df.groupby("Symbol", "Size", "sum").sort_values("sum"))
-	
-	#df.Avg_Tot_Sbmtd_Chrgs.astype(float)
-	
-	#df.Avg_Tot_Sbmtd_Chrgs.set_clean(lambda x: None if x == '' else x)
-	#print(df.columns)
-	#print(df.Avg_Tot_Sbmtd_Chrgs.describe())
-	#end = time.time()
-	#print(end - start)
-	
-	#start = time.time()
-	#df2 = pd.read_csv("bulk.csv")
-	#print(df2.Avg_Tot_Sbmtd_Chrgs.describe())
-	#end = time.time()
-	#print(end - start)
 
 
