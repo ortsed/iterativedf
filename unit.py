@@ -5,9 +5,9 @@ import time
 
 
 start = time.time()
-df = read_csv("sample2.txt", delimiter=",")
+df = idf.read_csv("sample2.txt", delimiter=",")
 
-df.Size.astype("int")
+df.Size.astype(int)
 
 print(df.Size.describe())
 
