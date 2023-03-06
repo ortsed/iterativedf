@@ -130,11 +130,7 @@ class IterativeDF():
 				def _values(row, val):
 					if not val:
 						val = []
-					data = self.column(row, self2.column)
-					
-					
-					if self2.func:
-						data = self2.func(data)
+					data = self.column(row, self2.handle)
 					
 					val.append(data)
 					
@@ -393,14 +389,18 @@ class IterativeDF():
 			end = colrange[1]
 			return row[start:end]
 		else:
-			val = row[column]
+			# get the series object by its handle
+			series = self.__dict__[column]
 			
-			if getattr(self, column).func != None:
+			# get the column value by the original column name
+			val = row[series.column]
+			
+			# apply function if exists
+			if series.func != None:
+				val = series.func(val)
 				
-				val = getattr(self, column).func(val)
 				
-				
-			return val #row[col]
+			return val
 		
 	def set_filter(self, column, func):
 		""" 
