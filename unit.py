@@ -1,6 +1,6 @@
 ### Unit tests
 
-import iterative as idf
+import iterativedf as idf
 import time
 
 import pandas as pd
