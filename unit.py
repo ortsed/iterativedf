@@ -15,13 +15,15 @@ print(df.Price)
 
 df.Price.astype(float)
 
+#print(df.Price.mean())
+
 print(df.Price.describe())
 
 
 df2 = pd.read_csv("sample2.txt")
 print(df2.Price.describe())
 
-breakpoint()
+#breakpoint()
 
 #df.set_filter("Symbol", lambda x: x == "ONTX")
 

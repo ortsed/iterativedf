@@ -1,7 +1,7 @@
 import csv
 from statistics import median, mean, stdev
 import pandas as pd
-import os
+import os, math
 
 set_option = pd.set_option
 
@@ -146,7 +146,25 @@ class IterativeDF():
 				todo: Needs to be turned into an iterative method
 				Not optimized for large data 
 				"""
-				return stdev(self2.values)
+				
+				mean = self2.mean()
+				
+				def _std(row, vals, mean=mean):
+					if not vals:
+						vals = []
+					data = self.column(row, self2.handle)
+					
+					val = (data - mean)**2
+					
+					vals.append(val)
+					
+					return vals
+				
+				data = self.apply(_std)
+				
+				std_total = math.sqrt(sum(data)/self.length())
+				
+				return std_total
 				
 			def median(self2, subgroup_size=1000):
 				""" 
@@ -154,42 +172,55 @@ class IterativeDF():
 				and then calculating median of array of medians 
 				
 				"""
-				arr = []
-				med = None
-				meds = []
 				
-				for row in self.reader():
-					if not self.filt or self.filt(row):
-						val = self.column(row, self2.column)
-						if val:
-							try:
-								arr.append(val)
-							except:
-								pass
-							if len(arr) > subgroup_size:
-								med = median(arr)
-								arr = []
-								meds.append(med)
-							   
-				return median(meds)
+				
+				def _median(row, vals):
+					
+					if not vals: 
+						vals = [[], []]
+					
+					vals1, medians = vals
+					
+					val = self.column(row, self2.column)
+					
+					if val:
+						try:
+							vals1.append(val)
+						except:
+							pass
+						if len(vals1) > subgroup_size:
+							med = median(vals1)
+							vals1 = []
+							medians.append(med)
+							
+					return [vals1, medians]
+						
+				medians = self.apply(_median)	
+				
+				   
+				return median(medians[0])
 				 
 			
 			def mean(self2):
 				""" Simple average by adding each value and divide by total # of rows """
-
-				total = 0
-				rows = 0
-				for row in self.reader():
-					if not self.filt or self.filt(row):
-						
-						val = self.column(row, self2.column)
-						try:
-							total = total + val
-							rows = rows + 1
-						except:
-							pass
 				
-				return total/rows
+				def _mean(row, vals):
+					if not vals: 
+						vals = [0, 0]
+					
+					total, counts = vals
+					
+					val = self.column(row, self2.column)
+					try:
+						total = total + val
+						counts = counts + 1
+					except:
+						pass
+					return [total, counts]
+							
+				total, counts = self.apply(_mean)
+				
+				return total/counts
 				
 			   
 			def describe(self2):   
@@ -239,11 +270,10 @@ class IterativeDF():
 				return pd.Series({
 					"count": 	rows,
 					"mean":   	tot/rows,
+					"std":	  	self2.std(),
 					"min":	  	mn,
 					"50%":   	median(meds),
 					"max":	 	mx,
-					#"Std":	  	stdev(arr),
-					#"total": tot
 				})
 					
 			
