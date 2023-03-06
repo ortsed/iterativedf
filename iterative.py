@@ -46,10 +46,6 @@ df.
 """
 
 class IterativeDF():
-
-
-
-
 	fi = ""
 	delimiter = ""
 	columns = []
@@ -76,6 +72,7 @@ class IterativeDF():
 		self.dtypes = dtypes
 		self.nrows = nrows
 		self.skiprows = skiprows
+		self.fwf_colmap = fwf_colmap
 		
 		def __getitem__(self, key):
 			return getattr(self, key)
@@ -89,10 +86,6 @@ class IterativeDF():
 			line = next(self.reader())
 			self.columns = list(line.keys())
 			
-		
-		
-
-		self.fwf_colmap = fwf_colmap
 
 		class IterativeSeries():
 			""" Define the series class for dataframe columns """
@@ -111,6 +104,10 @@ class IterativeDF():
 					self2.handle = column
 				
 				self2.func = None
+				
+			def __str__(self2):
+				return str(self2.head())
+				
 
 			def astype(self2, dtype):
 				self2.dtype = dtype
@@ -230,25 +227,28 @@ class IterativeDF():
 						elif val < mn:
 							mn = val
 						
-						if len(arr) > 1000:
+						if len(arr) > 10:
 							med = median(arr)
 							arr = []
 							meds.append(med)
+
+					if len(arr) > 0:
+						med = median(arr)
+						meds.append(med)
 							
 					return [arr, tot, rows, meds, mn, mx]
 				
 				arr, tot, rows, meds, mn, mx  = self.apply(_describe, self2.column)
 
-				return {
-					"Median":   median(meds),
-					"Mean"  :   tot/rows,
+				return pd.Series({
+					"count": 	rows,
+					"mean":   	tot/rows,
+					"min":	  	mn,
+					"50%":   	median(meds),
+					"max":	 	mx,
 					#"Std":	  	stdev(arr),
-					"Min":	  	mn,
-					"Max":	 	mx,
-					"Rows": 	rows,
 					#"total": tot
-				
-				}
+				})
 					
 			
 					
@@ -371,7 +371,7 @@ class IterativeDF():
 			vals.append(row)
 			return [vals, nrows]
 		
-		data, i = self.apply(_head, nrows=ct)
+		data, i = self.apply(_head, nrows=nrows)
 
 		df = pd.DataFrame(data, columns=self.columns)
 		return df 

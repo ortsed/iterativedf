@@ -3,15 +3,25 @@
 import iterative as idf
 import time
 
+import pandas as pd
+
 
 start = time.time()
 df = idf.read_csv("sample2.txt", delimiter=",")
 
-df.Size.astype(int)
+print(df.head())
 
-print(df.Size.describe())
+print(df.Price)
 
-#breakpoint()
+df.Price.astype(float)
+
+print(df.Price.describe())
+
+
+df2 = pd.read_csv("sample2.txt")
+print(df2.Price.describe())
+
+breakpoint()
 
 #df.set_filter("Symbol", lambda x: x == "ONTX")
 
