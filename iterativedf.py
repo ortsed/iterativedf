@@ -120,29 +120,39 @@ class IterativeDF():
 				if func:
 					self.__dict__[col_name].func = func
 								
-			def head(self2, nrows=10):
+			def head(self2, nrows=10, sort=False, ascending=False):
 				""" Return top n number of rows """
-				return self2.values(nrows=nrows)
+				return self2.values(nrows=nrows, sort=sort, ascending=ascending)
 				
-			def values(self2, nrows=10):
+			def values(self2, start=0, nrows=10, sort=False, ascending=False):
 				""" Returns values of series as array.  """
 				
+				if sort:
+					_nrows = nrows
+					nrows = None
+					
 				def _values(row, val):
 					if not val:
 						val = []
+						
 					data = self.column(row, self2.handle)
 					
 					val.append(data)
 					
+					if sort:
+						reverse = not ascending
+						val = sorted(val, reverse=reverse)[start:nrows]
+					
 					return val
 				
-				data = self.apply(_values, nrows=nrows)
+				data = self.apply(_values, start=start, nrows=nrows)
 				
 				return pd.DataFrame(data, columns=[self2.handle])
 				
 				
 			def std(self2):
-				""" Standard deviation of a series.  
+				""" 
+				Standard deviation of a series.  
 				todo: Needs to be turned into an iterative method
 				Not optimized for large data 
 				"""
@@ -221,6 +231,25 @@ class IterativeDF():
 				total, counts = self.apply(_mean)
 				
 				return total/counts
+            
+			def max(self2):
+
+				""" Get the maximum value of a series """
+			
+				def _max(row, _max_val):
+					if not _max: 
+						_max_val = None
+				
+					val = self.column(row, self2.column)
+				
+					if not _max_val or val > _max_val:
+						_max_val = val  
+
+					return _max_val
+						
+				_max_val = self.apply(_max)
+			
+				return _max_val
 				
 			   
 			def describe(self2):   
@@ -346,13 +375,20 @@ class IterativeDF():
 			
 		elif method == "sum":
 			output = vals
+			
+		elif method == "max":
+			output = max(vals.values())
+		elif method == "min":
+			output = min(vals.values())
+		elif method == "median":
+			output = median(vals.values())
 		
 		if not_pandas:
 			return output
 		else:
 			return pd.DataFrame(output.items(), columns=[column1, method])
 		
-	def apply(self, func, *args, nrows=None):
+	def apply(self, func, *args, start=0, nrows=None):
 		""" Method to apply a function across all data in the dataframe """
 		
 		vals = None
@@ -397,7 +433,11 @@ class IterativeDF():
 			vals.append(row)
 			return [vals, nrows]
 		
-		data, i = self.apply(_head, nrows=nrows)
+		tmp = self.apply(_head, nrows=nrows)
+		if tmp:
+			data, i = tmp
+		else:
+			data, i = None, None
 
 		df = pd.DataFrame(data, columns=self.columns)
 		return df 
@@ -440,6 +480,7 @@ class IterativeDF():
 		for example - func(val) should return True or False
 		
 		"""
+		
 		def filt(row):
 			# if no column is set, unset the filter
 			if not column:
@@ -451,7 +492,10 @@ class IterativeDF():
 					return True
 				else:
 					return False
-		self.filt = filt
+		if column == None:
+			self.filt = None
+		else:
+			self.filt = filt
 
 	def get_cols(self, cols, not_pandas=False):
 		""" 

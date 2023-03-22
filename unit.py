@@ -11,9 +11,11 @@ df = idf.read_csv("sample2.txt", delimiter=",")
 
 print(df.head())
 
-print(df.Price)
-
 df.Price.astype(float)
+
+print(df.Price.head(sort=True))
+
+
 
 #print(df.Price.mean())
 
