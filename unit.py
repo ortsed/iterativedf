@@ -11,15 +11,15 @@ df = idf.read_csv("sample2.txt", delimiter=",")
 
 print(df.head())
 
-df.Price.astype(float)
+df.cols["Price"].func = lambda x: float(x)
 
-print(df.Price.head(sort=True))
+print(df.head("Price", sort=True))
 
 
 
 #print(df.Price.mean())
 
-print(df.Price.describe())
+print(df.describe("Price"))
 
 
 df2 = pd.read_csv("sample2.txt")
