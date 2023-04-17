@@ -45,6 +45,59 @@ df.
 
 """
 
+from _csv import reader
+
+class FWFReader:
+    def __init__(self, f, fwf_colmap, restkey=None, restval=None,
+                 dialect="excel", *args, **kwds):
+        self._fieldnames = fwf_colmap.keys()   # list of keys for the dict
+        self._ranges = fwf_colmap.values()
+        self.restkey = restkey          # key to catch long rows
+        self.restval = restval          # default value for short rows
+        self.reader = reader(f, dialect, *args, **kwds)
+        self.dialect = dialect
+        self.line_num = 0
+
+    def __iter__(self):
+        return self
+
+    @property
+    def fieldnames(self):
+        if self._fieldnames is None:
+            try:
+                self._fieldnames = next(self.reader)
+            except StopIteration:
+                pass
+        self.line_num = self.reader.line_num
+        return self._fieldnames
+
+    @fieldnames.setter
+    def fieldnames(self, value):
+        self._fieldnames = value
+
+    def __next__(self):
+        row = next(self.reader)
+        row2 = []
+        [row2.append(row[0][x:y]) for x,y in self._ranges]
+        row = row2
+        
+        self.line_num = self.reader.line_num
+
+        # unlike the basic reader, we prefer not to return blanks,
+        # because we will typically wind up with a dict full of None
+        # values
+        while row == []:
+            row = next(self.reader)
+        d = dict(zip(self.fieldnames, row))
+        lf = len(self.fieldnames)
+        lr = len(row)
+        if lf < lr:
+            d[self.restkey] = row[lf:]
+        elif lf > lr:
+            for key in self.fieldnames[lr:]:
+                d[key] = self.restval
+        return d
+
 class IterativeSeries():
 	""" Define the series class for dataframe columns """
 
@@ -97,6 +150,11 @@ class IterativeDF():
 		self.skiprows = skiprows
 		self.fwf_colmap = fwf_colmap
 		
+		# Filter to be applied on dataframe
+		# a function whose input is a row
+		# e.g. df.filt = lambda x: x["date"] > 2004
+		self.filt = None  
+		
 		self.cols = {}
 		
 		def __getitem__(self, key):
@@ -145,14 +203,21 @@ class IterativeDF():
 				
 			cts[val1] = cts[val1] + 1
 			
-			if method != "count": 
+			if method in ["sum", "mean", "max", "min"]: 
 				
 				val2 = self.column(row, column2)
 				if val2:									
 					if val1 not in vals: 
 						vals[val1] = 0
 				
-					vals[val1] = vals[val1] + val2 
+					vals[val1] = vals[val1] + val2
+			elif method == "median":
+				val2 = self.column(row, column2)
+				if val2:									
+					if val1 not in vals: 
+						vals[val1] = []
+				
+					vals[val1].append(val2)
 			
 			return [cts, vals]
 		
@@ -179,7 +244,9 @@ class IterativeDF():
 		elif method == "min":
 			output = min(vals.values())
 		elif method == "median":
-			output = median(vals.values())
+			for k,v in vals.items():
+				vals[k] = median(vals[k])
+			output = vals
 		
 		if not_pandas:
 			return output
@@ -246,9 +313,13 @@ class IterativeDF():
 
 	def reader(self):
 		""" Method for opening and reading the file line by line using csv.DictReader """
-		
 		f = open(self.file, "r", encoding=self.encoding)
-		reader = csv.DictReader(f, delimiter=self.delimiter)
+		
+		if self.fwf_colmap:
+			reader = FWFReader(f, fwf_colmap=fwf_colmap)
+		else:
+			reader = csv.DictReader(f, delimiter=self.delimiter)
+			
 		return reader
 		
 		
@@ -275,30 +346,7 @@ class IterativeDF():
 				
 			return val
 		
-	def set_filter(self, column, func):
-		""" 
-		Sets a row-wise filter to be applied in other methods 
-		col: the column the filter is being applied to
-		func: a function that accepts a single value and returns a boolean
-		for example - func(val) should return True or False
-		
-		"""
-		
-		def filt(row):
-			# if no column is set, unset the filter
-			if not column:
-				self.filt = None
-			else:
-				# get the value from the row and use it as a filter
-				val1 = self.column(row, column)
-				if func(val1):
-					return True
-				else:
-					return False
-		if column == None:
-			self.filt = None
-		else:
-			self.filt = filt
+
 
 	def get_cols(self, cols, not_pandas=False):
 		""" 
