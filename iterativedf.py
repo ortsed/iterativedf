@@ -45,58 +45,67 @@ df.
 
 """
 
-from _csv import reader
-
 class FWFReader:
-    def __init__(self, f, fwf_colmap, restkey=None, restval=None,
-                 dialect="excel", *args, **kwds):
-        self._fieldnames = fwf_colmap.keys()   # list of keys for the dict
-        self._ranges = fwf_colmap.values()
-        self.restkey = restkey          # key to catch long rows
-        self.restval = restval          # default value for short rows
-        self.reader = reader(f, dialect, *args, **kwds)
-        self.dialect = dialect
-        self.line_num = 0
+	"""
+	Document reader for fixed-width files
+	similar to csv.DictReader
+	requires a fwf_colmap in the form of:
+	{
+		"column1": [0,4],
+		"column2": [5:8],
+		....
+	}
 
-    def __iter__(self):
-        return self
+	"""
+	def __init__(self, f, fwf_colmap, restkey=None, restval=None,
+				 dialect="excel", *args, **kwds):
+		self._fieldnames = fwf_colmap.keys()   # list of keys for the dict
+		self._ranges = fwf_colmap.values()
+		self.restkey = restkey		  # key to catch long rows
+		self.restval = restval		  # default value for short rows
+		self.reader = reader(f, dialect, *args, **kwds)
+		self.dialect = dialect
+		self.line_num = 0
 
-    @property
-    def fieldnames(self):
-        if self._fieldnames is None:
-            try:
-                self._fieldnames = next(self.reader)
-            except StopIteration:
-                pass
-        self.line_num = self.reader.line_num
-        return self._fieldnames
+	def __iter__(self):
+		return self
 
-    @fieldnames.setter
-    def fieldnames(self, value):
-        self._fieldnames = value
+	@property
+	def fieldnames(self):
+		if self._fieldnames is None:
+			try:
+				self._fieldnames = next(self.reader)
+			except StopIteration:
+				pass
+		self.line_num = self.reader.line_num
+		return self._fieldnames
 
-    def __next__(self):
-        row = next(self.reader)
-        row2 = []
-        [row2.append(row[0][x:y]) for x,y in self._ranges]
-        row = row2
-        
-        self.line_num = self.reader.line_num
+	@fieldnames.setter
+	def fieldnames(self, value):
+		self._fieldnames = value
 
-        # unlike the basic reader, we prefer not to return blanks,
-        # because we will typically wind up with a dict full of None
-        # values
-        while row == []:
-            row = next(self.reader)
-        d = dict(zip(self.fieldnames, row))
-        lf = len(self.fieldnames)
-        lr = len(row)
-        if lf < lr:
-            d[self.restkey] = row[lf:]
-        elif lf > lr:
-            for key in self.fieldnames[lr:]:
-                d[key] = self.restval
-        return d
+	def __next__(self):
+		row = next(self.reader)
+		row2 = []
+		[row2.append(row[0][x:y]) for x,y in self._ranges]
+		row = row2
+		
+		self.line_num = self.reader.line_num
+
+		# unlike the basic reader, we prefer not to return blanks,
+		# because we will typically wind up with a dict full of None
+		# values
+		while row == []:
+			row = next(self.reader)
+		d = dict(zip(self.fieldnames, row))
+		lf = len(self.fieldnames)
+		lr = len(row)
+		if lf < lr:
+			d[self.restkey] = row[lf:]
+		elif lf > lr:
+			for key in self.fieldnames[lr:]:
+				d[key] = self.restval
+		return d
 
 class IterativeSeries():
 	""" Define the series class for dataframe columns """
@@ -194,30 +203,62 @@ class IterativeDF():
 			if cts_vals == None:
 				cts_vals = [{}, {}]
 				
-			cts, vals = cts_vals			
-
-			val1 = self.column(row, column1)
-
-			if val1 not in cts: 
-				cts[val1] = 0
+			cts, vals = cts_vals
+			
+			multi_group = True if type(column1) == list else False
+			
+			
+			if multi_group:
+				agg_key1 = 	column1[0]
+				agg_key2 = 	column1[1]
+				agg_key_val1 = self.column(row, agg_key1)
+				agg_key_val2 = self.column(row, agg_key2)
+				val1 = self.column(row, agg_key1)
 				
-			cts[val1] = cts[val1] + 1
+				if agg_key_val1 not in cts: 
+					cts[agg_key_val1] = {}
+				
+				if agg_key_val2 not in cts[agg_key_val1]: 
+					cts[agg_key_val1][agg_key_val2] = 0
+					
+				cts[agg_key_val1][agg_key_val2] = cts[agg_key_val1][agg_key_val2] + 1
+				
+			else:
+				agg_key1 = column1
+				val1 = self.column(row, agg_key1)
+		
+				if agg_key_val1 not in cts: 
+					cts[agg_key_val1] = 0
+				
+				cts[agg_key_val1] = cts[agg_key_val1] + 1
+				
 			
 			if method in ["sum", "mean", "max", "min"]: 
 				
-				val2 = self.column(row, column2)
-				if val2:									
-					if val1 not in vals: 
-						vals[val1] = 0
+				agg_val = self.column(row, column2)
+				if agg_val:	
 				
-					vals[val1] = vals[val1] + val2
+					if multi_group:
+						if agg_key_val1 not in vals: 
+							vals[agg_key_val1] = {}
+				
+						if agg_key_val2 not in vals[agg_key_val1]: 
+							vals[agg_key_val1][agg_key_val2] = 0
+							
+						vals[agg_key_val1][agg_key_val2] = vals[agg_key_val1][agg_key_val2] + agg_val
+					else:						
+						if agg_key_val1 not in vals: 
+							vals[agg_key_val1] = 0
+				
+						vals[agg_key_val1] = vals[agg_key_val1] + agg_val
+						
 			elif method == "median":
-				val2 = self.column(row, column2)
-				if val2:									
-					if val1 not in vals: 
-						vals[val1] = []
+				agg_val = self.column(row, column2)
+				if agg_val:		
+					if agg_key_val1 not in vals: 
+						vals[agg_key_val1] = []
 				
-					vals[val1].append(val2)
+					vals[agg_key_val1].append(agg_val)
 			
 			return [cts, vals]
 		
@@ -286,7 +327,21 @@ class IterativeDF():
 				i = i + 1
 		return vals
 		
-		
+	def unique(self, column):
+		""" Unique/distinct values in column """
+
+		def _unique(row, vals):
+			if vals == None:
+				vals = []
+			
+			val = self.column(row, column)
+			
+			if val not in vals:
+				vals.append(val)
+				
+			return vals
+	
+		return self.apply(_unique)
 		
 	def head(self, column=None, nrows=10, sort=False, ascending=False):
 		""" Return top n number of rows """
