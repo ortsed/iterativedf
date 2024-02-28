@@ -6,6 +6,7 @@ import os, math
 set_option = pd.set_option
 
 
+
 """
 Class that defines a dataframe similar to Pandas
 Data is not read into memory, but loops through row by row
@@ -23,8 +24,8 @@ df.columns
 # Group and aggregate data based on column
 df.groupby("Symbol", "Size", "sum").sort_values("sum")
 
-# Limit data output to subset
-df.set_filter("Symbol", lambda x: x == "ONTX")
+# Limit data output to subset by defining a filter function
+df.filt = lambda x: x["Symbol"] == "ONTX"
 	
 
 # Series methods
@@ -34,12 +35,21 @@ df.Size.astype("int")
 df.Size.describe()
 
 # First ten rows of a column
-df.__dict__['Date Of Incident'].head()
+
+df.cols["Price"].func = lambda x: float(x)
+
+df.cols["Price"].head()
 
 # Create a new column based on a calculation of another column
-df.__dict__['Date Of Incident'].cp("dt", lambda x: x[0:4]) 
+df.col("dt", lambda x: x['Date Of Incident'][0:4])
 
-df.
+# Return all data to stdout, which can be massive if data is large
+df.head(nrows=None)
+
+
+TODO
+Calculated fields should show up in head/values
+Calculated fields should be accessible in filt() methods
 
 
 
@@ -51,7 +61,7 @@ class FWFReader:
 	similar to csv.DictReader
 	requires a fwf_colmap in the form of:
 	{
-		"column1": [0,4],
+		"column1": [0:4],
 		"column2": [5:8],
 		....
 	}
@@ -328,7 +338,7 @@ class IterativeDF():
 		return vals
 		
 	def unique(self, column):
-		""" Unique/distinct values in column """
+		""" Return all unique/distinct values in column """
 
 		def _unique(row, vals):
 			if vals == None:
@@ -379,7 +389,7 @@ class IterativeDF():
 		
 		
 	def column(self, row, column):
-		""" Selects a column from a row """
+		""" Selects a column from a row, returns a single value """
 
 		if self.delimiter == "fwf":
 			colrange = self.fwf_colmap[column]
@@ -429,17 +439,26 @@ class IterativeDF():
 			return pd.DataFrame(arrs, columns=cols)
 	
 	def shape(self):
-		""" Gets shape of dataframe with filter"""
+		""" Gets shape of dataframe """
 		length = self.length()
 		return (length, len(self.columns))
 		
 	def length(self):
-		""" Gets shape of dataframe with filter"""
+		""" Gets length of dataframe """
 		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 		
 		
 	def values(self, column, start=0, nrows=10, sort=False, ascending=False):
-		""" Returns values of series as array.  """
+		""" 
+		Returns values of series as array
+		
+		column: handle for the column
+		start: starting point in the series, akin to skiprows
+		nrows: number of rows returned
+		sort: whether to sort the data
+		ascending: if sorting, A-Z vs. Z-A
+		
+		"""
 		
 		if sort:
 			_nrows = nrows
@@ -494,6 +513,7 @@ class IterativeDF():
 		""" 
 		Creates an estimated median by calculating median of subarrays
 		and then calculating median of array of medians 
+		subgroup_size: the sample size when iterating over whole population
 		
 		"""
 		
@@ -567,7 +587,11 @@ class IterativeDF():
 		
 	   
 	def describe(self, column):   
-		""" Basic stats of Series """
+		""" 
+		Basic stats of Series: count, mean, std, min, med, max
+		
+		
+		"""
 		
 		def _describe(row, vals, column):
 		
@@ -622,14 +646,29 @@ class IterativeDF():
 	
 			
 	def value_counts(self, column, not_pandas=False, normalize=False):
-		""" Gets count of distinct values for a column """
+		""" 
+		Gets count of distinct values for a column 
+		column: handle for the column being calculated
+		not_pandas: flag to output pandas dataframe or not
+		"""
 		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=normalize)
 	
 	def value_pcts(self, column, not_pandas=False):
-		""" Value counts as a % of total number of rows """
+		""" 
+		Value counts as a % of total number of rows 
+		column: handle for the column being calculated
+		not_pandas: flag to output pandas dataframe or not
+		
+		"""
 		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=True)
 		
 	def col(self, column_name, get, func=None):
+		""" 
+		Define a column using a function
+		column_name: handle used to reference the column
+		get: function that returns a value based on a row input.  e.g. lambda x: x["name"] + 1
+		func: A secondary optional function (may need to be removed)
+		"""
 		self.cols[column_name] = IterativeSeries(column_name)
 		self.cols[column_name].get = get
 		self.cols[column_name].func = func
@@ -638,9 +677,12 @@ class IterativeDF():
 def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, nrows=None, skiprows=0):
 	"""
 	delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
-	columns: for delimited file types, a list of column names in the order they appear
+	columns: a list of column names in the order they appear 
 	fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
 	start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
+	encoding: e.g utf-8, utf-16, latin-1
+	nrows: sets a default for the number of rows to return as in head(nrows=10)  may need to be removed
+	skiprows: skip the first X number of rows
 	""" 
 	df = IterativeDF(file, delimiter=delimiter, columns=columns, fwf_colmap=fwf_colmap, encoding=encoding, nrows=nrows, skiprows=skiprows)
 	return df
