@@ -7,9 +7,10 @@ set_option = pd.set_option
 
 
 """
-Class that defines a dataframe similar to Pandas
-Data is not read into memory, but loops through row by row
+IterativeDF class that defined a dataframe similar to Pandas.
+Data is not read into memory, but loops through row by row.
 
+Sample methods
 
 # Read in File as CSV
 df = idf.read_csv("sample2.txt", delimiter=",")
@@ -72,6 +73,10 @@ class FWFReader:
 
 	@property
 	def fieldnames(self):
+		"""
+			gets the columns of the dataframe as an array
+		"""
+	
 		if self._fieldnames is None:
 			try:
 				self._fieldnames = next(self.reader)
@@ -82,12 +87,15 @@ class FWFReader:
 
 	@fieldnames.setter
 	def fieldnames(self, value):
+		""" Sets the value of the dataframe columns """
 		self._fieldnames = value
 
 	def __next__(self):
+		""" overwrites the default iteration method """
+	
+	
 		row = next(self.reader)
-		row2 = []
-		[row2.append(row[0][x:y]) for x,y in self._ranges]
+		row2 = [] #[row2.append(row[0][x:y]) for x,y in self._ranges]
 		row = row2
 		
 		self.line_num = self.reader.line_num
@@ -97,9 +105,13 @@ class FWFReader:
 		# values
 		while row == []:
 			row = next(self.reader)
+			
 		d = dict(zip(self.fieldnames, row))
+		
 		lf = len(self.fieldnames)
+		
 		lr = len(row)
+		
 		if lf < lr:
 			d[self.restkey] = row[lf:]
 		elif lf > lr:
@@ -112,12 +124,11 @@ class IterativeSeries():
 
 	def __init__(self2, column, handle=None):
 		
-		
 		# Name of the column in the original data
 		self2.column = column 
 		
 		# What the column is referred to in the idf
-		# Changes when there is a calculated field
+		# changes when there is a calculated field
 		if handle:
 			self2.handle = handle
 		else:
@@ -128,10 +139,17 @@ class IterativeSeries():
 		self2.func = None
 		
 	def __str__(self2):
+		# output the head of the dataframe as default
 		return str(self2.head())
+		
 
 class IterativeDF():
-	fi = ""
+	"""
+	Base class for dataframes.
+	Holds methods for dataframe wide methods.
+	All other methods are within the IterativeSeries class.
+	"""
+	fi = "" 
 	delimiter = ""
 	columns = []
 	fwf_colmap = {}
@@ -161,6 +179,8 @@ class IterativeDF():
 		
 		# Filter to be applied on dataframe
 		# a function whose input is a row
+		# that determines if row is ignored
+		# if True row is included
 		# e.g. df.filt = lambda x: x["date"] > 2004
 		self.filt = None  
 		
@@ -169,13 +189,18 @@ class IterativeDF():
 		def __getitem__(self, key):
 			return getattr(self, key)
 		
-		
+		# if fixed width format
 		if delimiter == "fwf":
 			self.columns = fwf_colmap.keys()
 		elif len(columns) > 0:
+			# if columns are defined, use them
 			self.columns = columns
 		else: 
+			# if columns attribute is not defined
+			# get columns based on first row
+			
 			line = next(self.reader())
+			
 			self.columns = list(line.keys())				
 
 
@@ -183,31 +208,34 @@ class IterativeDF():
 		for column in self.columns:
 			if column:
 				self.cols[column] = IterativeSeries(column)
-				#setattr(self, column, IterativeSeries(column))
-				#self.__dict__[column] = IterativeSeries(column)
 				
 	def groupby(self, column1, column2, method, not_pandas=False, normalize=False):
 		""" 
 		Group by a column 
-		col1: the column being grouped over
-		col2: the column whose values are being aggregated
+		column1: the column being grouped over
+		column2: the column whose values are being aggregated
 		not_pandas: flag to toggle pandas object output
 		normalize: flag to toggle counts as a percentage of total counts
+		
+		current method choices: sum, mean, max, min, median
 		
 		todo: group by multiple columns
 		
 		"""
 
 		def _groupby(row, cts_vals, column1, column2, method, not_pandas, normalize):	
+			# submethod for looping
 			
+			# define dict of counts/values if not already passed
 			if cts_vals == None:
 				cts_vals = [{}, {}]
-				
+			
 			cts, vals = cts_vals
 			
+			# determine if grouping on multiple values
 			multi_group = True if type(column1) == list else False
 			
-			
+			# if multiple groupings
 			if multi_group:
 				agg_key1 = 	column1[0]
 				agg_key2 = 	column1[1]
@@ -224,20 +252,28 @@ class IterativeDF():
 				cts[agg_key_val1][agg_key_val2] = cts[agg_key_val1][agg_key_val2] + 1
 				
 			else:
+				# get the value for that row
 				agg_key1 = column1
 				val1 = self.column(row, agg_key1)
 		
+				# if the value hasn't been seen yet
+				# set count to 0, otherwise add 1
+				
 				if agg_key_val1 not in cts: 
 					cts[agg_key_val1] = 0
 				
 				cts[agg_key_val1] = cts[agg_key_val1] + 1
 				
 			
+			# for all methods besides median
 			if method in ["sum", "mean", "max", "min"]: 
 				
+				# get the value of that row
 				agg_val = self.column(row, column2)
-				if agg_val:	
 				
+				
+				if agg_val:	
+					# if grouping over multiple values
 					if multi_group:
 						if agg_key_val1 not in vals: 
 							vals[agg_key_val1] = {}
@@ -246,6 +282,7 @@ class IterativeDF():
 							vals[agg_key_val1][agg_key_val2] = 0
 							
 						vals[agg_key_val1][agg_key_val2] = vals[agg_key_val1][agg_key_val2] + agg_val
+						
 					else:						
 						if agg_key_val1 not in vals: 
 							vals[agg_key_val1] = 0
@@ -253,6 +290,10 @@ class IterativeDF():
 						vals[agg_key_val1] = vals[agg_key_val1] + agg_val
 						
 			elif method == "median":
+				# medians have to be handled differently
+				# values are appended to an array, and then 
+				# averaged at the end
+				
 				agg_val = self.column(row, column2)
 				if agg_val:		
 					if agg_key_val1 not in vals: 
@@ -262,11 +303,14 @@ class IterativeDF():
 			
 			return [cts, vals]
 		
-		
+		# apply the looped method
 		cts, vals = self.apply(_groupby, column1, column2, method, not_pandas, normalize)
-				
+		
+		# apply the final aggregation function
+		
 		if method == "count":
 			if normalize:
+			
 				cts = {k: val/sum(cts.values()) for k, val in cts.items()}
 		
 			output = cts
@@ -295,7 +339,10 @@ class IterativeDF():
 			return pd.DataFrame(output.items(), columns=[column1, method])
 		
 	def apply(self, func, *args, start=0, nrows=None):
-		""" Method to apply a function across all data in the dataframe """
+		""" 
+		Method to apply a function across all data in the dataframe 
+		Similar to pandas apply() method
+		"""
 		
 		vals = None
 			
@@ -305,15 +352,19 @@ class IterativeDF():
 
 		
 		i = 0
+		# loop through the file reader
 		for row in self.reader():
+		
+			# if a filter is defined
 			if not self.filt or self.filt(row):
 				
+				# do nothing if skipping rows
 				if self.skiprows and i <= self.skiprows:
-					# do nothing if skipping first X rows
 					pass
 				
-				elif nrows and i >= nrows + self.skiprows:
 				# Break if past the total number of rows
+				elif nrows and i >= nrows + self.skiprows:
+				
 					break
 				
 				else:
@@ -328,7 +379,7 @@ class IterativeDF():
 		return vals
 		
 	def unique(self, column):
-		""" Unique/distinct values in column """
+		""" Calculate unique/distinct values in a column """
 
 		def _unique(row, vals):
 			if vals == None:
@@ -344,11 +395,16 @@ class IterativeDF():
 		return self.apply(_unique)
 		
 	def head(self, column=None, nrows=10, sort=False, ascending=False):
-		""" Return top n number of rows """
+		""" Return the top n number of rows """
 		
+		# if a column is passed, return top n rows of the series
+		# using series method
 		if column:
 			return self.values(column, nrows=nrows, sort=sort, ascending=ascending)		
+		
+		# if no column, return top n rows of dataframe
 		else:
+			# define submethod for looping
 			def _head(row, vars):
 				if vars == None:
 					vars = [[], 0]
@@ -379,13 +435,22 @@ class IterativeDF():
 		
 		
 	def column(self, row, column):
-		""" Selects a column from a row """
-
+		""" 
+		
+		Selects column data from a row
+		
+		
+		"""
+		
+		# if a fixed width file
+		
 		if self.delimiter == "fwf":
 			colrange = self.fwf_colmap[column]
 			start = colrange[0]
 			end = colrange[1]
 			return row[start:end]
+		
+		# not a fixed width file
 		else:
 			# get the series object by its handle
 			series = self.cols[column]
@@ -405,7 +470,8 @@ class IterativeDF():
 
 	def get_cols(self, cols, not_pandas=False):
 		""" 
-		Selects columns from the dataframe and returns as a dictionary of arrays or pandas DataFrame
+		Selects columns from the dataframe and returns a dictionary of arrays 
+		or pandas DataFrame
 		cols: column name or array of column names to be selected
 		"""
 		arrs = {}
@@ -429,17 +495,17 @@ class IterativeDF():
 			return pd.DataFrame(arrs, columns=cols)
 	
 	def shape(self):
-		""" Gets shape of dataframe with filter"""
+		""" Gets shape of dataframe with filter applied """
 		length = self.length()
 		return (length, len(self.columns))
 		
 	def length(self):
-		""" Gets shape of dataframe with filter"""
+		""" Gets shape of dataframe with filter applied """
 		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 		
 		
 	def values(self, column, start=0, nrows=10, sort=False, ascending=False):
-		""" Returns values of series as array.  """
+		""" Returns values of series as array. Essentially a subset of dataframe """
 		
 		if sort:
 			_nrows = nrows
@@ -463,7 +529,38 @@ class IterativeDF():
 		
 		return pd.DataFrame(data, columns=[column])
 		
+	def min(self, column):
 		
+		
+		def _min(row, mn):
+			if not mn:
+				mn = None
+			
+			data = self.column(row, column)
+			
+			if not mn or data < mn:
+				mn = data
+				
+			return mn
+		
+		return self.apply(_min)
+        
+	def max(self, column):
+		
+		
+		def _max(row, mx):
+			if not mx:
+				mx = None
+			
+			data = self.column(row, column)
+			
+			if not mx or data > mx:
+				mx = data
+				
+			return mx
+		
+		return self.apply(_min)
+	
 	def std(self, column):
 		""" 
 		Standard deviation of a series.  
@@ -471,15 +568,21 @@ class IterativeDF():
 		Not optimized for large data 
 		"""
 		
+		# get the average of the column
 		mean = self.mean(column)
 		
+		# define the looped method
 		def _std(row, vals, mean=mean):
 			if not vals:
 				vals = []
+			
+			# get the column value
 			data = self.column(row, column)
 			
+			# apply std formula
 			val = (data - mean)**2
 			
+			# add to the array
 			vals.append(val)
 			
 			return vals
@@ -497,8 +600,9 @@ class IterativeDF():
 		
 		"""
 		
-		
+		# define looped method
 		def _median(row, vals):
+			
 			
 			if not vals: 
 				vals = [[], []]
@@ -550,6 +654,7 @@ class IterativeDF():
 
 		""" Get the maximum value of a series """
 	
+		# define looped method
 		def _max(row, _max_val):
 			if not _max: 
 				_max_val = None
@@ -560,7 +665,8 @@ class IterativeDF():
 				_max_val = val  
 
 			return _max_val
-				
+		
+		# apply looped method
 		_max_val = self.apply(_max)
 	
 		return _max_val
@@ -569,8 +675,10 @@ class IterativeDF():
 	def describe(self, column):   
 		""" Basic stats of Series """
 		
+		# define looped method
 		def _describe(row, vals, column):
 		
+			# define default values
 			if not vals:
 				arr = []
 				tot = 0
@@ -580,9 +688,12 @@ class IterativeDF():
 				mx = None
 			else:
 				arr, tot, rows, meds, mn, mx = vals
-		
+			
+			# get current value of column
 			val = self.column(row, column)
 			
+			
+			# append values to arrays
 			if val:
 				tot += val
 				
@@ -608,6 +719,7 @@ class IterativeDF():
 					
 			return [arr, tot, rows, meds, mn, mx]
 		
+		# apply looped method
 		arr, tot, rows, meds, mn, mx  = self.apply(_describe, column)
 
 		return pd.Series({
@@ -637,12 +749,15 @@ class IterativeDF():
 
 def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, nrows=None, skiprows=0):
 	"""
+	Reads in a file and returns an IDF dataframe
+	
 	delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
 	columns: for delimited file types, a list of column names in the order they appear
 	fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
 	start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
 	""" 
 	df = IterativeDF(file, delimiter=delimiter, columns=columns, fwf_colmap=fwf_colmap, encoding=encoding, nrows=nrows, skiprows=skiprows)
+	
 	return df
 
 
