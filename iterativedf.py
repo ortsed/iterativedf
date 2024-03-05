@@ -26,10 +26,6 @@ df.groupby("Symbol", "Size", "sum").sort_values("sum")
 
 # Limit data output to subset
 df.set_filter("Symbol", lambda x: x == "ONTX")
-	
-
-# Series methods
-df.Size.astype("int")
 
 # Get basic stats of a column
 df.Size.describe()
@@ -40,7 +36,6 @@ df.__dict__['Date Of Incident'].head()
 # Create a new column based on a calculation of another column
 df.__dict__['Date Of Incident'].cp("dt", lambda x: x[0:4]) 
 
-df.
 
 
 
@@ -254,7 +249,8 @@ class IterativeDF():
 			else:
 				# get the value for that row
 				agg_key1 = column1
-				val1 = self.column(row, agg_key1)
+
+				agg_key_val1 = self.column(row, agg_key1)
 		
 				# if the value hasn't been seen yet
 				# set count to 0, otherwise add 1
@@ -648,7 +644,7 @@ class IterativeDF():
 					
 		total, counts = self.apply(_mean)
 		
-		return total/counts
+		return total/counts if counts != 0 else 0
 	
 	def max(self, column):
 
@@ -724,7 +720,7 @@ class IterativeDF():
 
 		return pd.Series({
 			"count": 	rows,
-			"mean":   	tot/rows,
+			"mean":   	tot/rows if rows != 0 else 0,
 			"std":	  	self.std(column),
 			"min":	  	mn,
 			"50%":   	median(meds),
