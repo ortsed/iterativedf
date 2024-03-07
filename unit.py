@@ -16,13 +16,13 @@ df2 = pd.read_csv("sample2.txt")
 # Test column values are the same
 
 tmp1 = df1.head().fillna("")
-tmp2 = df2.head(10).fillna("")
+tmp2 = df2.head().fillna("")
 
 
 for col in tmp1.columns:
     if col != "":
         #print(col, tmp1[col].dtype, tmp2[col].dtype)
-        assert sum(tmp1[col].astype(str) == tmp2[col].astype(str).values) == 10, "Dataframe heads are not the same"
+        assert sum(tmp1[col].astype(str) == tmp2[col].astype(str).values) == 5, "Dataframe heads are not the same"
 
 
 # Test for column values with dtype
@@ -32,7 +32,7 @@ df1.cols["Price"].func = lambda x: float(x)
 df2["Price"] = df2["Price"].astype(float)
 
 tmp1 = df1.head("Price")["Price"]
-tmp2 = df2.Price.head(10)
+tmp2 = df2.Price.head()
 
 assert np.all(tmp1 == tmp2), "Dataframe column heads are not the same"
 
@@ -63,22 +63,22 @@ med1 = df1.median("Price")
 med2 = df2.Price.median()
 med_error = (med1 - med2)/med1
 
-assert abs(med_error) < .01, "Approximate median is not within .01 tolerance"
+assert abs(med_error) < .01, "Approximate median is not within 1% tolerance"
 
 # filtered dataframe test
 
-df1.filt = lambda x: x["Symbol"] == "ONTX"
+df1.set_filter(lambda x: x["Symbol"] == "ONTX")
 
 tmp1 = df1.head("Price")["Price"]
-tmp2 = df2[df2["Symbol"] == "ONTX"].Price.head(10)
+tmp2 = df2[df2["Symbol"] == "ONTX"].Price.head()
 
 assert np.all(tmp1.values == tmp2.values), "Filtered dataframe column heads are not the same"
 
 
 # Test Group By
 
-df1.filt = None
-df1.cols["Size"].func = lambda x: float(x)
+df1.set_filter(None)
+df1.set_func("Size", lambda x: float(x))
 
 tmp1 = df1.groupby("Symbol", "Size", "sum").sort_values(["sum", "Symbol"])
 
@@ -103,7 +103,7 @@ def clean_price(x):
             return float(x)
         except:
             return 0
-df1.cols["Price"].func = clean_price
+df1.set_func("Price", clean_price)
 #df1.values("ShortType")
 
 

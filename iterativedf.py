@@ -31,10 +31,10 @@ df.set_filter("Symbol", lambda x: x == "ONTX")
 df.Size.describe()
 
 # First ten rows of a column
-df.__dict__['Date Of Incident'].head()
+df.head("Date")
 
-# Create a new column based on a calculation of another column
-df.__dict__['Date Of Incident'].cp("dt", lambda x: x[0:4]) 
+# Create a new column based on calculation from that row
+df.col("Date Of Incident", lambda x: x["dt"][0:4]) 
 
 
 
@@ -204,6 +204,46 @@ class IterativeDF():
 			if column:
 				self.cols[column] = IterativeSeries(column)
 				
+	def set_func(self, column, func):
+        """
+        Defines a function applied to values of that column
+        Set to None to undo
+        
+        ex: df.set_func("col1", lambda x: float(x))
+        df.set_func("col1", None)
+        """
+		self.cols[column] = func
+		return None
+        
+	def set_filter(self, func):
+        """
+        Defines a function to filter rows from the whole dataframe
+        applied for all other functions that use the dataset
+        Set to None to undo
+        
+        
+        ex: df.set_filter(lambda x: x["name"] != None)
+        df.set_filter(None)
+        
+        """
+		self.filt = func
+		return None
+        
+	def col(column_name, func):
+        """
+        Define a calculated column based on a function
+        
+        ex: df.col("calc_val", lambda x: x["price"] * 3)
+        
+        """
+    
+        if column_name in self.columns:
+            raise("Column name already exists")
+        else:
+            self.cols[column] = IterativeSeries(column)
+            self.cols[column].get = func
+            
+    
 	def groupby(self, column1, column2, method, not_pandas=False, normalize=False):
 		""" 
 		Group by a column 
@@ -390,7 +430,7 @@ class IterativeDF():
 	
 		return self.apply(_unique)
 		
-	def head(self, column=None, nrows=10, sort=False, ascending=False):
+	def head(self, column=None, nrows=5, sort=False, ascending=False):
 		""" Return the top n number of rows """
 		
 		# if a column is passed, return top n rows of the series
@@ -432,9 +472,7 @@ class IterativeDF():
 		
 	def column(self, row, column):
 		""" 
-		
 		Selects column data from a row
-		
 		
 		"""
 		
@@ -451,9 +489,8 @@ class IterativeDF():
 			# get the series object by its handle
 			series = self.cols[column]
 			
-			# get the column value by the original column name
+			# get the column value using .get() method
 			val = series.get(row)
-			#val = row[series.column]
 			
 			# apply function if exists
 			if series.func != None:
@@ -540,7 +577,7 @@ class IterativeDF():
 			return mn
 		
 		return self.apply(_min)
-        
+		
 	def max(self, column):
 		
 		
@@ -737,10 +774,7 @@ class IterativeDF():
 		""" Value counts as a % of total number of rows """
 		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=True)
 		
-	def col(self, column_name, get, func=None):
-		self.cols[column_name] = IterativeSeries(column_name)
-		self.cols[column_name].get = get
-		self.cols[column_name].func = func
+
 
 
 def read_csv(file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, nrows=None, skiprows=0):
