@@ -108,3 +108,10 @@ df1.set_func("Price", clean_price)
 
 
 print(df1.describe("Price"))
+
+
+# Testing FWF reader
+
+#df = idf.read_csv("fwf_sample.txt", fwf_colmap={"year": [0,4], "state": [4,6], "state_fips": [6,8], "county_fips": [8,11], "registry": [11,13], "race": [13,14], "origin": [14,15], "sex": [15,16], "age": [16,18], "population": [18,26]}, delimiter="fwf")
+
+
