@@ -3,6 +3,7 @@ from statistics import median, mean, stdev
 import pandas as pd
 import os, math
 
+
 set_option = pd.set_option
 
 
@@ -73,7 +74,7 @@ class FWFReader:
 		self._ranges = fwf_colmap.values()
 		self.restkey = restkey		  # key to catch long rows
 		self.restval = restval		  # default value for short rows
-		self.reader = reader(f, dialect, *args, **kwds)
+		self.reader = csv.reader(f, dialect, *args, **kwds)
 		self.dialect = dialect
 		self.line_num = 0
 
@@ -381,7 +382,7 @@ class IterativeDF():
 		f = open(self.file, "r", encoding=self.encoding)
 		
 		if self.fwf_colmap:
-			reader = FWFReader(f, fwf_colmap=fwf_colmap)
+			reader = FWFReader(f, fwf_colmap=self.fwf_colmap)
 		else:
 			reader = csv.DictReader(f, delimiter=self.delimiter)
 			
