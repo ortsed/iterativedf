@@ -29,6 +29,10 @@ for col in tmp1.columns:
 assert df1.shape == df2.shape, "Dataframe shapes are not the same"
 
 
+# Test unique() method
+assert set(df1.unique("Symbol")) == set(df2.Symbol.unique()), "Unique Symbol values do not match"
+
+
 # Test for column values with dtype
 
 df1.cols["Price"].func = lambda x: float(x)

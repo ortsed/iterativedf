@@ -69,7 +69,7 @@ class FWFReader():
 	@property
 	def fieldnames(self):
 		"""
-			gets the columns of the dataframe as an array
+		Get the column names of the dataframe as an array
 		"""
 	
 		if self._fieldnames is None:
@@ -410,7 +410,7 @@ class IterativeDF():
 		return vals
 		
 	def unique(self, column):
-		""" Calculate unique/distinct values in a column """
+		""" Return set of unique/distinct values in a column """
 
 		def _unique(row, vals):
 			if vals == None:
@@ -454,7 +454,11 @@ class IterativeDF():
 			return df 
 
 	def reader(self):
-		""" Method for opening and reading the file line by line using csv.DictReader """
+		""" 
+		Method for opening and reading the file line by line using csv.DictReader 
+		
+		"""
+		
 		f = open(self.file, "r", encoding=self.encoding)
 		
 		if self.fwf_colmap:
@@ -467,7 +471,7 @@ class IterativeDF():
 		
 	def column(self, row, column):
 		""" 
-		Selects column data from a row
+		Selects column data from a given row
 		
 		"""
 		
@@ -522,17 +526,28 @@ class IterativeDF():
 	
 	@property
 	def shape(self):
-		""" Gets shape of dataframe with filter applied """
+		""" 
+		Gets shape of dataframe with filter applied
+		Same as pandas .shape
+		"""
 		length = self.length()
 		return (length, len(self.columns))
 		
 	def length(self):
-		""" Gets shape of dataframe with filter applied """
+		""" 
+		Gets length of dataframe with filter applied 
+		
+		"""
 		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 		
 		
 	def values(self, column, start=0, nrows=10, sort=False, ascending=False):
-		""" Returns values of series as array. Essentially a subset of dataframe """
+		""" 
+		Returns values of series as array. 
+		
+		Essentially returns a subset of the dataframe with the filter applied
+		Warning: can be processor intensive if dataset is large 
+		"""
 		
 		if sort:
 			_nrows = nrows
@@ -557,7 +572,10 @@ class IterativeDF():
 		return pd.DataFrame(data, columns=[column])
 		
 	def min(self, column):
+		"""
+		Get minimum value of a column
 		
+		"""
 		
 		def _min(row, mn):
 			if not mn:
@@ -571,26 +589,32 @@ class IterativeDF():
 			return mn
 		
 		return self.apply(_min)
-		
+			
 	def max(self, column):
+
+		""" Get the maximum value of a series """
+	
+		# define looped method
+		def _max(row, _max_val):
+			if not _max: 
+				_max_val = None
 		
+			val = self.column(row, column)
 		
-		def _max(row, mx):
-			if not mx:
-				mx = None
-			
-			data = self.column(row, column)
-			
-			if not mx or data > mx:
-				mx = data
-				
-			return mx
+			if not _max_val or val > _max_val:
+				_max_val = val  
+
+			return _max_val
 		
-		return self.apply(_min)
+		# apply looped method
+		_max_val = self.apply(_max)
+	
+		return _max_val	
+	
 	
 	def std(self, column):
 		""" 
-		Standard deviation of a series.  
+		Standard deviation of a column.  
 		todo: Needs to be turned into an iterative method
 		Not optimized for large data 
 		"""
@@ -677,28 +701,7 @@ class IterativeDF():
 		
 		return total/counts if counts != 0 else 0
 	
-	def max(self, column):
 
-		""" Get the maximum value of a series """
-	
-		# define looped method
-		def _max(row, _max_val):
-			if not _max: 
-				_max_val = None
-		
-			val = self.column(row, column)
-		
-			if not _max_val or val > _max_val:
-				_max_val = val  
-
-			return _max_val
-		
-		# apply looped method
-		_max_val = self.apply(_max)
-	
-		return _max_val
-		
-	   
 	def describe(self, column):   
 		""" Basic stats of Series """
 		
@@ -761,11 +764,16 @@ class IterativeDF():
 	
 			
 	def value_counts(self, column, not_pandas=False, normalize=False):
-		""" Gets count of distinct values for a column """
+		""" 
+		Gets count of distinct values for a column 
+		"""
+		
 		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=normalize)
 	
 	def value_pcts(self, column, not_pandas=False):
-		""" Value counts as a % of total number of rows """
+		""" 
+		Value counts as a % of total number of rows 
+		"""
 		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=True)
 		
 
