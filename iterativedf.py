@@ -123,8 +123,13 @@ class IterativeSeries():
 		else:
 			self2.handle = column
 			
+		
+		# Default get method
+		# gets the value from the row	
 		self2.get = lambda x: x[column]
 		
+		# Default cleaning method
+		# used to set the datatype
 		self2.func = None
 		
 	def __str__(self2):
@@ -148,12 +153,15 @@ class IterativeDF():
 	
 	def __init__(self, file, delimiter=",", columns=[], fwf_colmap={}, encoding=None, dtypes={}, nrows=None, skiprows=0):
 		"""
-		delimiter: determines type of separated file, such as ",", "\t", "|" -- or "fwf" for fixed with files
+		delimiter: determines type of separated file, 
+		such as ",", "\t", "|" -- or "fwf" for fixed with files
 		
-		columns: for delimited file types, a list of column names in the order they appear
+		columns: for delimited file types, a list of column 
+		names in the order they appear
 		
-		fwf_colmap: for fixed width files, a dictionary that maps column name to a list of
-		start and endpoints for that column {'colname': [0,2], 'colname2': [3,4]}
+		fwf_colmap: for fixed width files, a dictionary that maps 
+		column name to a list of start and endpoints for that 
+		column {'colname': [0,2], 'colname2': [3,4]}
 		
 		encoding: utf-8 vs others
 		
@@ -198,16 +206,6 @@ class IterativeDF():
 			if column:
 				self.cols[column] = IterativeSeries(column)
 				
-	def set_func(self, column, func):
-		"""
-		Defines a function applied to values of that column
-		Set to None to undo
-		
-		ex: df.set_func("col1", lambda x: float(x))
-		df.set_func("col1", None)
-		"""
-		self.cols[column] = func
-		return None
 		
 	def set_filter(self, func):
 		"""
@@ -235,6 +233,9 @@ class IterativeDF():
 			raise("Column name already exists")
 		else:
 			self.cols[column] = IterativeSeries(column)
+			
+			# rather than basic get() method, calculated get() is based on values 
+			# from other columns
 			self.cols[column].get = func
 			
 	
@@ -483,7 +484,7 @@ class IterativeDF():
 			
 			# get the column value using .get() method
 			val = series.get(row)
-			
+		
 			# apply function if exists
 			if series.func != None:
 				val = series.func(val)
@@ -519,6 +520,7 @@ class IterativeDF():
 		else:
 			return pd.DataFrame(arrs, columns=cols)
 	
+	@property
 	def shape(self):
 		""" Gets shape of dataframe with filter applied """
 		length = self.length()

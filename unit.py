@@ -13,7 +13,7 @@ df1 = idf.read_csv("sample2.txt", delimiter=",")
 df2 = pd.read_csv("sample2.txt")
 
 
-# Test column values are the same
+# Test head values are the same
 
 tmp1 = df1.head().fillna("")
 tmp2 = df2.head().fillna("")
@@ -23,6 +23,10 @@ for col in tmp1.columns:
     if col != "":
         #print(col, tmp1[col].dtype, tmp2[col].dtype)
         assert sum(tmp1[col].astype(str) == tmp2[col].astype(str).values) == 5, "Dataframe heads are not the same"
+
+# Test that df shape is the same
+
+assert df1.shape == df2.shape, "Dataframe shapes are not the same"
 
 
 # Test for column values with dtype
@@ -78,7 +82,9 @@ assert np.all(tmp1.values == tmp2.values), "Filtered dataframe column heads are 
 # Test Group By
 
 df1.set_filter(None)
-df1.set_func("Size", lambda x: float(x))
+
+df1.cols['Price'].func = lambda x: float(x)
+df1.cols['Size'].func = lambda x: float(x)
 
 tmp1 = df1.groupby("Symbol", "Size", "sum").sort_values(["sum", "Symbol"])
 
@@ -103,7 +109,7 @@ def clean_price(x):
             return float(x)
         except:
             return 0
-df1.set_func("Price", clean_price)
+df1.cols["Price"].func = clean_price
 #df1.values("ShortType")
 
 
