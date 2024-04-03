@@ -24,8 +24,8 @@ for col in tmp1.columns:
         #print(col, tmp1[col].dtype, tmp2[col].dtype)
         assert sum(tmp1[col].astype(str) == tmp2[col].astype(str).values) == 5, "Dataframe heads are not the same"
 
-# Test that df shape is the same
 
+# Test that df shapes are the same
 assert df1.shape == df2.shape, "Dataframe shapes are not the same"
 
 
@@ -35,7 +35,7 @@ df1.cols["Price"].func = lambda x: float(x)
 
 df2["Price"] = df2["Price"].astype(float)
 
-tmp1 = df1.head("Price")["Price"]
+tmp1 = df1.head("Price")
 tmp2 = df2.Price.head()
 
 assert np.all(tmp1 == tmp2), "Dataframe column heads are not the same"
@@ -73,7 +73,7 @@ assert abs(med_error) < .01, "Approximate median is not within 1% tolerance"
 
 df1.set_filter(lambda x: x["Symbol"] == "ONTX")
 
-tmp1 = df1.head("Price")["Price"]
+tmp1 = df1.head("Price")
 tmp2 = df2[df2["Symbol"] == "ONTX"].Price.head()
 
 assert np.all(tmp1.values == tmp2.values), "Filtered dataframe column heads are not the same"

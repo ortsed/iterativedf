@@ -431,7 +431,7 @@ class IterativeDF():
 		# if a column is passed, return top n rows of the series
 		# using series method
 		if column:
-			return self.values(column, nrows=nrows, sort=sort, ascending=ascending)		
+			return self.values(column, nrows=nrows, sort=sort, ascending=ascending)[column]	
 		
 		# if no column, return top n rows of dataframe
 		else:
