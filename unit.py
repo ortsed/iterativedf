@@ -33,6 +33,18 @@ assert df1.shape == df2.shape, "Dataframe shapes are not the same"
 assert set(df1.unique("Symbol")) == set(df2.Symbol.unique()), "Unique Symbol values do not match"
 
 
+# Test custom column logic
+
+df1.col("price_in_cents", lambda x: float(x["Price"]) * 100)
+df2["price_in_cents"] = df2["Price"] * 100
+
+tmp1 = df1.head("price_in_cents")
+tmp2 = df2["price_in_cents"].head()
+
+for i, val in enumerate(tmp1.values):
+	assert val == tmp2.values[i], "Custom column heads are not the same"
+
+
 # Test value_counts
 
 tmp1 = df1.value_counts("Symbol")
@@ -42,7 +54,7 @@ for i, row in enumerate(tmp1.iterrows()):
 	assert row[1]["count"] == tmp2.iloc[i]["Symbol"], "Value counts do not match (2)"
 
 
-# Test alue pcts
+# Test value pcts
 
 tmp1 = df1.value_pcts("Symbol")
 tmp2 = df2.Symbol.value_counts(normalize=True).reset_index()
@@ -54,7 +66,7 @@ for i, row in enumerate(tmp1.iterrows()):
 
 # Test for column values with dtype
 
-df1.cols["Price"].func = lambda x: float(x)
+df1.cols["Price"].clean = lambda x: float(x)
 
 df2["Price"] = df2["Price"].astype(float)
 
@@ -107,8 +119,8 @@ assert np.all(tmp1.values == tmp2.values), "Filtered dataframe column heads are 
 
 df1.set_filter(None)
 
-df1.cols['Price'].func = lambda x: float(x)
-df1.cols['Size'].func = lambda x: float(x)
+df1.cols['Price'].clean = lambda x: float(x)
+df1.cols['Size'].clean = lambda x: float(x)
 
 tmp1 = df1.groupby("Symbol", "Size", "sum").sort_values(["sum", "Symbol"])
 
@@ -133,7 +145,7 @@ def clean_price(x):
             return float(x)
         except:
             return 0
-df1.cols["Price"].func = clean_price
+df1.cols["Price"].clean = clean_price
 #df1.values("ShortType")
 
 

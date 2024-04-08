@@ -130,7 +130,7 @@ class IterativeSeries():
 		
 		# Default cleaning method
 		# used to set the datatype
-		self2.func = None
+		self2.clean = None
 		
 	def __str__(self2):
 		# output the head of the dataframe as default
@@ -221,22 +221,25 @@ class IterativeDF():
 		self.filt = func
 		return None
 		
-	def col(column_name, func):
+	def col(self, column_name, get_func):
 		"""
 		Define a calculated column based on a function
 		
-		ex: df.col("calc_val", lambda x: x["price"] * 3)
+		ex: df.col("triple_price", lambda x: x["price"] * 3)
+		
+		Note: any cleaning function should be repeated here as
+		it doesn't access pre-defined function
 		
 		"""
 	
 		if column_name in self.columns:
 			raise("Column name already exists")
 		else:
-			self.cols[column] = IterativeSeries(column)
+			self.cols[column_name] = IterativeSeries(column_name)
 			
 			# rather than basic get() method, calculated get() is based on values 
 			# from other columns
-			self.cols[column].get = func
+			self.cols[column_name].get = get_func
 			
 	
 	def groupby(self, column1, column2, method, not_pandas=False, normalize=False):
@@ -491,8 +494,8 @@ class IterativeDF():
 			val = series.get(row)
 		
 			# apply function if exists
-			if series.func != None:
-				val = series.func(val)
+			if series.clean != None:
+				val = series.clean(val)
 				
 				
 			return val
