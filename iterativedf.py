@@ -455,7 +455,8 @@ class IterativeDF():
 
 	def reader(self):
 		""" 
-		Method for opening and reading the file line by line using csv.DictReader 
+		Method for opening and reading the file line by line using csv.DictReader or
+		FWFReader
 		
 		"""
 		
@@ -536,7 +537,6 @@ class IterativeDF():
 	def length(self):
 		""" 
 		Gets length of dataframe with filter applied 
-		
 		"""
 		return sum(1 for line in self.reader() if not self.filt or self.filt(line))
 		
@@ -574,17 +574,16 @@ class IterativeDF():
 	def min(self, column):
 		"""
 		Get minimum value of a column
-		
 		"""
 		
 		def _min(row, mn):
 			if not mn:
 				mn = None
 			
-			data = self.column(row, column)
+			val = self.column(row, column)
 			
-			if not mn or data < mn:
-				mn = data
+			if not mn or val < mn:
+				mn = val
 				
 			return mn
 		
@@ -592,15 +591,21 @@ class IterativeDF():
 			
 	def max(self, column):
 
-		""" Get the maximum value of a series """
+		""" 
+		Get the maximum value of a series 
+		"""
 	
 		# define looped method
 		def _max(row, _max_val):
+		
+			# define default value
 			if not _max: 
 				_max_val = None
-		
+			
+			# get column value
 			val = self.column(row, column)
 		
+			# determine if maximum
 			if not _max_val or val > _max_val:
 				_max_val = val  
 
@@ -628,10 +633,10 @@ class IterativeDF():
 				vals = []
 			
 			# get the column value
-			data = self.column(row, column)
+			val = self.column(row, column)
 			
 			# apply std formula
-			val = (data - mean)**2
+			val = (val - mean)**2
 			
 			# add to the array
 			vals.append(val)
@@ -648,7 +653,6 @@ class IterativeDF():
 		""" 
 		Creates an estimated median by calculating median of subarrays
 		and then calculating median of array of medians 
-		
 		"""
 		
 		# define looped method
@@ -681,7 +685,9 @@ class IterativeDF():
 		 
 	
 	def mean(self, column):
-		""" Simple average by adding each value and divide by total # of rows """
+		""" 
+		Simple average by adding each value and divide by total # of rows 
+		"""
 		
 		def _mean(row, vals):
 			if not vals: 
@@ -703,7 +709,9 @@ class IterativeDF():
 	
 
 	def describe(self, column):   
-		""" Basic stats of Series """
+		""" 
+		Returns count, mean, median, min, max, and std of series 
+		"""
 		
 		# define looped method
 		def _describe(row, vals, column):
@@ -768,13 +776,13 @@ class IterativeDF():
 		Gets count of distinct values for a column 
 		"""
 		
-		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=normalize)
+		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=normalize).sort_values("count", ascending=False)
 	
 	def value_pcts(self, column, not_pandas=False):
 		""" 
 		Value counts as a % of total number of rows 
 		"""
-		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=True)
+		return self.groupby(column, column, "count", not_pandas=not_pandas, normalize=True).sort_values("count", ascending=False)
 		
 
 

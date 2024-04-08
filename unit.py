@@ -8,7 +8,7 @@ import pandas as pd
 
 # Read in data using IDF and Pandas
 
-df1 = idf.read_csv("sample2.txt", delimiter=",")
+df1 = idf.read_csv("sample2.txt")
 
 df2 = pd.read_csv("sample2.txt")
 
@@ -31,6 +31,25 @@ assert df1.shape == df2.shape, "Dataframe shapes are not the same"
 
 # Test unique() method
 assert set(df1.unique("Symbol")) == set(df2.Symbol.unique()), "Unique Symbol values do not match"
+
+
+# Test value_counts
+
+tmp1 = df1.value_counts("Symbol")
+tmp2 = df2.Symbol.value_counts().reset_index()
+for i, row in enumerate(tmp1.iterrows()):
+	assert row[1]["Symbol"] == tmp2.iloc[i]["index"], "Value counts do not match (1)"
+	assert row[1]["count"] == tmp2.iloc[i]["Symbol"], "Value counts do not match (2)"
+
+
+# Test alue pcts
+
+tmp1 = df1.value_pcts("Symbol")
+tmp2 = df2.Symbol.value_counts(normalize=True).reset_index()
+for i, row in enumerate(tmp1.iterrows()):
+	assert row[1]["Symbol"] == tmp2.iloc[i]["index"], "Value pcts do not match (1)"
+	assert row[1]["count"] == tmp2.iloc[i]["Symbol"], "Value pcts do not match (2)"
+
 
 
 # Test for column values with dtype
@@ -81,6 +100,7 @@ tmp1 = df1.head("Price")
 tmp2 = df2[df2["Symbol"] == "ONTX"].Price.head()
 
 assert np.all(tmp1.values == tmp2.values), "Filtered dataframe column heads are not the same"
+
 
 
 # Test Group By
