@@ -3,8 +3,6 @@ from statistics import median, mean, stdev
 import pandas as pd
 import os, math
 
-set_option = pd.set_option
-
 
 """
 IterativeDF class that defined a dataframe similar to Pandas.
@@ -13,7 +11,7 @@ Data is not read into memory, but loops through row by row.
 Sample methods
 
 # Read in File as CSV
-df = idf.read_csv("sample2.txt", delimiter=",")
+df = idf.read_csv("sample2.txt")
 
 # First 10 rows
 df.head() 
@@ -28,7 +26,7 @@ df.groupby("Symbol", "Size", "sum").sort_values("sum")
 df.set_filter("Symbol", lambda x: x == "ONTX")
 
 # Get basic stats of a column
-df.Size.describe()
+df.describe("Size")
 
 # First ten rows of a column
 df.head("Date")
@@ -467,7 +465,7 @@ class IterativeDF():
 		if self.fwf_colmap:
 			reader = FWFReader(f, fwf_colmap=self.fwf_colmap)
 		else:
-			reader = csv.DictReader(f, delimiter=self.delimiter)
+			reader = csv.DictReader(f, fieldnames=self.columns, delimiter=self.delimiter)
 			
 		return reader
 		
