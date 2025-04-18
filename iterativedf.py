@@ -263,7 +263,7 @@ class IterativeDF():
 			cts, vals = cts_vals
 			
 			# determine if grouping on multiple values
-			multi_group = True if type(column1) == list else False
+			multi_group = True if type(column1) == list and len(list) > 1 else False
 			
 			# if multiple groupings
 			if multi_group:
