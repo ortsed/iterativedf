@@ -23,7 +23,7 @@ df.columns
 df.groupby("Symbol", "Size", "sum").sort_values("sum")
 
 # Limit data output to subset
-df.set_filter("Symbol", lambda x: x == "ONTX")
+df.set_filter(lambda x: x["Symbol"] == "ONTX")
 
 # Get basic stats of a column
 df.describe("Size")
